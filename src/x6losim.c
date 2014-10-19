@@ -1,12 +1,14 @@
 /* _____________________________________________________________________ x6losim
 
- Description : Xsilon Network Simulator using QEMU Virtual 802.15.4 Nodes.
- Author      : Martin Townsend
-                 email: martin.townsend@xsilon.com
-                 email: mtownsend1973@gmail.com
-                 skype: mtownsend1973
- Copyright   : All Rights Reserved Xsilon Ltd 2014.
+    Xsilon Network Simulator using QEMU Virtual 802.15.4 Nodes.
+
+    Martin Townsend
+        email: martin.townsend@xsilon.com
+        email: mtownsend1973@gmail.com
+        skype: mtownsend1973
+    All Rights Reserved Xsilon Ltd 2014.
  */
+#include "x6losim_interface.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -31,6 +33,8 @@
  */
 
 static struct x6lo {
+	int loglevel;
+
 	int sockfd;
 	int port;
 	struct sockaddr_in servaddr;
@@ -45,6 +49,7 @@ static struct x6lo {
  */
 
 #define xlog(l, fmt, args...) _xlog(__FILE__, __FUNCTION__, __LINE__, l, fmt, ## args)
+#define xlog_hexdump(l, p, len) _xlog_log_hexdump(__FILE__, __FUNCTION__, __LINE__, l, p, len, 0)
 
 /**
  * @brief Log a debug msg.
@@ -54,8 +59,9 @@ static struct x6lo {
  * @param level Log Level
  * @param fmt Format string.
  */
-void _xlog(const char * file, const char * function, int line, int level,
-		const char *fmt, ...) {
+void
+_xlog(const char * file, const char * function, int line, int level,
+	  const char *fmt, ...) {
 	va_list vargs;
 	const char * s;
 
@@ -89,6 +95,86 @@ void _xlog(const char * file, const char * function, int line, int level,
 	}
 	va_end(vargs);
 }
+
+void
+_xlog_log_hexdump(
+	const char * file,
+	const char * function,
+	uint16_t line_no,
+	int pri,
+	const void * start_addr,
+	uint16_t dump_byte_len,
+	const void * print_address)
+{
+#define HEXDUMP_BYTES_PER_LINE		(16)
+#define HEXDUMP_MAX_HEX_LENGTH		(80)
+	char *hex_buff_p;
+	char * char_buff_p;
+	char *hex_wr_p;
+	const char *dump_p = (const char*) start_addr;
+	unsigned long row_start_addr = (unsigned long)print_address
+	& ~((unsigned long) (HEXDUMP_BYTES_PER_LINE - 1));
+	unsigned int first_row_start_column = (unsigned long)print_address % HEXDUMP_BYTES_PER_LINE;
+	unsigned int column = 0;
+	unsigned int bytes_left = dump_byte_len;
+	unsigned int i;
+
+	hex_buff_p = (char *)malloc(HEXDUMP_MAX_HEX_LENGTH + 1);
+	char_buff_p = (char *)malloc(HEXDUMP_BYTES_PER_LINE + 1);
+	hex_wr_p = hex_buff_p;
+
+	if (pri <= sim.loglevel) {
+		// Print the lead in
+		for (i = 0; i < first_row_start_column; i++) {
+			hex_wr_p += sprintf(hex_wr_p, ".. ");
+			char_buff_p[column++] = ' ';
+		}
+
+		while (bytes_left) {
+			hex_wr_p += sprintf(hex_wr_p, "%02X ", ((unsigned int)*dump_p) & 0xFF);
+			if ((*dump_p >= ' ') && (*dump_p <= '~')) {
+				char_buff_p[column] = *dump_p;
+			} else {
+				char_buff_p[column] = '.';
+			}
+
+			dump_p++;
+			column++;
+			bytes_left--;
+
+			if (column >= HEXDUMP_BYTES_PER_LINE) {
+				// Print the completed line
+				hex_buff_p[HEXDUMP_MAX_HEX_LENGTH] = '\0';
+				char_buff_p[HEXDUMP_BYTES_PER_LINE] = '\0';
+
+				_xlog(file, function, line_no, pri,
+					  "0x%08X: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
+
+				row_start_addr += HEXDUMP_BYTES_PER_LINE;
+				hex_wr_p = hex_buff_p;
+				column = 0;
+			}
+		}
+
+		if (column) {
+			// Print the lead out
+			for (i = column; i < HEXDUMP_BYTES_PER_LINE; i++) {
+				hex_wr_p += sprintf(hex_wr_p, ".. ");
+				char_buff_p[i] = ' ';
+			}
+
+			hex_buff_p[HEXDUMP_MAX_HEX_LENGTH] = '\0';
+			char_buff_p[HEXDUMP_BYTES_PER_LINE] = '\0';
+
+			_xlog(file, function, line_no, pri,
+				  "0x%08X: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
+		}
+	}
+
+	free(hex_buff_p);
+	free(char_buff_p);
+}
+
 
 static void signal_handler(int signum) {
 	int i;
@@ -132,6 +218,19 @@ static void daemonize(void) {
 	close(STDERR_FILENO);
 }
 
+static void
+x6losim_recv(uint8_t * data, uint16_t len)
+{
+	struct netsim_pkt_hdr * hdr = (struct netsim_pkt_hdr *)data;
+	uint8_t * p = data;
+
+	/* p points to the actual 802.15.4 frame */
+	p += NETSIM_PKT_HDR_SZ;
+
+	xlog(LOG_INFO, "Rx Pkt: len:%d repcode:%d ", hdr->psdu_len, hdr->rep_code);
+	xlog_hexdump(LOG_INFO, p, hdr->psdu_len);
+}
+
 /* _________________________________________________ Global Function Definitions
  */
 
@@ -142,6 +241,7 @@ main(int argc, char *argv[]) {
 	int opt;
 
 	sim.port = 11555;
+	sim.loglevel = LOG_DEBUG;
 
 	while ((opt = getopt(argc, argv, "x")) != -1) {
 		switch (opt) {
@@ -198,7 +298,11 @@ main(int argc, char *argv[]) {
 		if (n == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 				continue;
+		} else if (n == 0) {
+			continue;
 		}
+
+		x6losim_recv(sim.pktbuf, n);
 
 		xlog(LOG_INFO, "%d: Received packet from %s", n,
 			 inet_ntoa(cliaddr.sin_addr));
