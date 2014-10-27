@@ -35,9 +35,20 @@
 static struct x6lo {
 	int loglevel;
 
-	int sockfd;
-	int port;
-	struct sockaddr_in servaddr;
+	/* inbound unicast socket */
+	struct {
+		int sockfd;
+		int port;
+		struct sockaddr_in servaddr;
+	} rx;
+
+	struct {
+		/* outbound multicast socket */
+		int mcastsockfd;
+		int mcastport;
+		struct sockaddr_in servaddr;
+	} tx;
+
 	char pktbuf[256];
 
 	bool debug;
@@ -175,8 +186,8 @@ _xlog_log_hexdump(
 	free(char_buff_p);
 }
 
-
-static void signal_handler(int signum) {
+static void
+signal_handler(int signum) {
 	int i;
 	switch (signum) {
 	case SIGINT:
@@ -191,7 +202,8 @@ static void signal_handler(int signum) {
 	signal(signum, signal_handler);
 }
 
-static void daemonize(void) {
+static void
+daemonize(void) {
 	pid_t pid, sid;
 
 	/* Fork off the parent process */
@@ -219,6 +231,14 @@ static void daemonize(void) {
 }
 
 static void
+x6losim_send(uint8_t * data, uint16_t len)
+{
+	sendto(sim.tx.mcastsockfd, data, len, 0,
+				   (struct sockaddr *)&sim.tx.servaddr,
+				   sizeof(sim.tx.servaddr));
+}
+
+static void
 x6losim_recv(uint8_t * data, uint16_t len)
 {
 	struct netsim_pkt_hdr * hdr = (struct netsim_pkt_hdr *)data;
@@ -229,6 +249,8 @@ x6losim_recv(uint8_t * data, uint16_t len)
 
 	xlog(LOG_INFO, "Rx Pkt: len:%d repcode:%d ", hdr->psdu_len, hdr->rep_code);
 	xlog_hexdump(LOG_INFO, p, hdr->psdu_len);
+
+	x6losim_send(p, hdr->psdu_len);
 }
 
 /* _________________________________________________ Global Function Definitions
@@ -240,7 +262,7 @@ main(int argc, char *argv[]) {
 	sigset_t sigset, oldset;
 	int opt;
 
-	sim.port = 11555;
+	sim.rx.port = 11555;
 	sim.loglevel = LOG_DEBUG;
 
 	while ((opt = getopt(argc, argv, "x")) != -1) {
@@ -275,24 +297,31 @@ main(int argc, char *argv[]) {
 		signal(SIGTERM, SIG_IGN);
 
 
-	sim.sockfd=socket(AF_INET,SOCK_DGRAM,0);
+	sim.rx.sockfd=socket(AF_INET,SOCK_DGRAM,0);
 
-	bzero(&sim.servaddr,sizeof(sim.servaddr));
-	sim.servaddr.sin_family = AF_INET;
-	sim.servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
-	sim.servaddr.sin_port=htons(sim.port);
-	bind(sim.sockfd, (struct sockaddr *)&sim.servaddr, sizeof(sim.servaddr));
+	bzero(&sim.rx.servaddr,sizeof(sim.rx.servaddr));
+	sim.rx.servaddr.sin_family = AF_INET;
+	sim.rx.servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
+	sim.rx.servaddr.sin_port=htons(sim.rx.port);
+	bind(sim.rx.sockfd, (struct sockaddr *)&sim.rx.servaddr, sizeof(sim.rx.servaddr));
+
+	sim.tx.mcastsockfd=socket(AF_INET,SOCK_DGRAM,0);
+
+	bzero(&sim.tx.servaddr,sizeof(sim.tx.servaddr));
+	sim.tx.servaddr.sin_family = AF_INET;
+	sim.tx.servaddr.sin_addr.s_addr=inet_addr("224.1.1.1");
+	sim.tx.servaddr.sin_port=htons(22411);
 
 	sim.running = true;
 	xlog(LOG_NOTICE, "UDP Server started");
-	xlog(LOG_NOTICE, "Port: %d", sim.port);
+	xlog(LOG_NOTICE, "Port: %d", sim.rx.port);
 	while (sim.running && !sim.quit) {
 		struct sockaddr_in cliaddr;
 		socklen_t len;
 		int n;
 
 		len = sizeof(cliaddr);
-		n = recvfrom(sim.sockfd, sim.pktbuf, sizeof(sim.pktbuf), MSG_DONTWAIT,
+		n = recvfrom(sim.rx.sockfd, sim.pktbuf, sizeof(sim.pktbuf), MSG_DONTWAIT,
 					 (struct sockaddr *)&cliaddr, &len);
 
 		if (n == -1) {
