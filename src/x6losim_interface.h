@@ -24,10 +24,12 @@
  */
 struct netsim_pkt_hdr
 {
+	uint8_t source_addr[8];
 	uint16_t psdu_len; /* length of the actual 802.15.4 frame after this hdr */
 	uint8_t rep_code; /* the repitition code it was sent at */
 	int8_t tx_power; /* the power it was sent at */
 	uint8_t cca_mode; /* the cca mode used */
+	int8_t rssi; /* Received signal strength, set by simulator */
 };
 
 

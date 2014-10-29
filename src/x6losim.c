@@ -25,6 +25,7 @@
 
 /* _____________________________________________ Constants and Macro definitions
  */
+#define X6LOSIM_VERSION		"0.1.0"
 
 /* _______________________________________________________ Function Declarations
  */
@@ -234,8 +235,7 @@ static void
 x6losim_send(uint8_t * data, uint16_t len)
 {
 	sendto(sim.tx.mcastsockfd, data, len, 0,
-				   (struct sockaddr *)&sim.tx.servaddr,
-				   sizeof(sim.tx.servaddr));
+	       (struct sockaddr *)&sim.tx.servaddr, sizeof(sim.tx.servaddr));
 }
 
 static void
@@ -250,7 +250,9 @@ x6losim_recv(uint8_t * data, uint16_t len)
 	xlog(LOG_INFO, "Rx Pkt: len:%d repcode:%d ", hdr->psdu_len, hdr->rep_code);
 	xlog_hexdump(LOG_INFO, p, hdr->psdu_len);
 
-	x6losim_send(p, hdr->psdu_len);
+	/* @todo set RSSI on a per link basis */
+	hdr->rssi = -10;
+	x6losim_send((uint8_t *)hdr, len);
 }
 
 /* _________________________________________________ Global Function Definitions
@@ -261,6 +263,7 @@ main(int argc, char *argv[]) {
 	int rc;
 	sigset_t sigset, oldset;
 	int opt;
+	int pkts_rx = 0;
 
 	sim.rx.port = 11555;
 	sim.loglevel = LOG_DEBUG;
@@ -282,7 +285,7 @@ main(int argc, char *argv[]) {
 		openlog("x6losim", LOG_CONS, LOG_DAEMON);
 	}
 
-	xlog(LOG_NOTICE, "x6losim started");
+	xlog(LOG_NOTICE, "x6losim started v%s", X6LOSIM_VERSION);
 
 	/* Install the signal handler */
 	sigemptyset(&sigset);
@@ -298,12 +301,20 @@ main(int argc, char *argv[]) {
 
 
 	sim.rx.sockfd=socket(AF_INET,SOCK_DGRAM,0);
+	if (sim.rx.sockfd == -1) {
+		perror("Server socket creation failed");
+		exit(EXIT_FAILURE);
+	}
 
 	bzero(&sim.rx.servaddr,sizeof(sim.rx.servaddr));
 	sim.rx.servaddr.sin_family = AF_INET;
 	sim.rx.servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
 	sim.rx.servaddr.sin_port=htons(sim.rx.port);
-	bind(sim.rx.sockfd, (struct sockaddr *)&sim.rx.servaddr, sizeof(sim.rx.servaddr));
+	if (bind(sim.rx.sockfd, (struct sockaddr *)&sim.rx.servaddr,
+		 sizeof(sim.rx.servaddr)) != 0) {
+		perror("Bind failed for Netsim server socket");
+		exit(EXIT_FAILURE);
+	}
 
 	sim.tx.mcastsockfd=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -333,8 +344,9 @@ main(int argc, char *argv[]) {
 
 		x6losim_recv(sim.pktbuf, n);
 
-		xlog(LOG_INFO, "%d: Received packet from %s", n,
+		xlog(LOG_INFO, "%d: Received packet %d from %s", n, pkts_rx,
 			 inet_ntoa(cliaddr.sin_addr));
+		pkts_rx++;
 	}
 
 	xlog(LOG_NOTICE, "Hasta la vista ....  baby!!!");
