@@ -3,9 +3,11 @@
 #include <syslog.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 bool log_to_syslog = false;
 int loglevel = LOG_DEBUG;
+pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief Log a debug msg.
@@ -22,6 +24,7 @@ _xlog(const char * file, const char * function, int line, int level,
 	const char * s;
 
 	va_start(vargs, fmt);
+	pthread_mutex_lock(&log_mutex);
 	if (!log_to_syslog) {
 		if (level == LOG_ERR) {
 			/* Change color to red */
@@ -49,6 +52,7 @@ _xlog(const char * file, const char * function, int line, int level,
 	} else {
 		vsyslog(level, fmt, vargs);
 	}
+	pthread_mutex_unlock(&log_mutex);
 	va_end(vargs);
 }
 
@@ -79,6 +83,7 @@ _xlog_log_hexdump(
 	char_buff_p = (char *)malloc(HEXDUMP_BYTES_PER_LINE + 1);
 	hex_wr_p = hex_buff_p;
 
+	pthread_mutex_lock(&log_mutex);
 	if (pri <= loglevel) {
 		// Print the lead in
 		for (i = 0; i < first_row_start_column; i++) {
@@ -126,6 +131,7 @@ _xlog_log_hexdump(
 				  "0x%08X: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
 		}
 	}
+	pthread_mutex_unlock(&log_mutex);
 
 	free(hex_buff_p);
 	free(char_buff_p);

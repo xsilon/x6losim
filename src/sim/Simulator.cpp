@@ -12,9 +12,12 @@
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
+ #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#include <vector>
 
 // _____________________________________________ PacketArbitrator Implementation
 
@@ -30,10 +33,11 @@ public:
 	} rx;
 };
 
-PacketArbitrator::PacketArbitrator(const char * name)
+PacketArbitrator::PacketArbitrator(const char * name, int port)
 {
 	pimpl = new PacketArbitrator_pimpl();
 	pimpl->name = strdup(name);
+	pimpl->rx.port = port;
 }
 
 PacketArbitrator::~PacketArbitrator()
@@ -46,11 +50,10 @@ PacketArbitrator::~PacketArbitrator()
 }
 
 int
-PacketArbitrator::start(int port)
+PacketArbitrator::start()
 {
 	int rc;
 
-	pimpl->rx.port = port;
 	rc = pthread_create(&pimpl->rx.thread, NULL,
 			PacketArbitrator::run_helper, (void *)this);
 	return 0;
@@ -108,6 +111,7 @@ PacketArbitrator::run()
 		pkts_rx++;
 	}
 
+	close(pimpl->rx.sockfd);
 	free(pkt_buf);
 	pthread_exit(NULL);
 }
@@ -116,13 +120,24 @@ PacketArbitrator::run()
 
 class NetworkSimulator_pimpl {
 public:
+	NetworkSimulator_pimpl(bool debugIn, int numMediums) : mediums(2)
+	{
+		debug = debugIn;
+	}
 	bool debug;
+	std::vector<PhysicalMedium *> mediums;
 };
 
 NetworkSimulator::NetworkSimulator(bool debug)
 {
-	pimpl = new NetworkSimulator_pimpl();
-	pimpl->debug = debug;
+	pimpl = new NetworkSimulator_pimpl(debug, 2);
+
+	// TODO: Get ports from a config file or script.
+	pimpl->mediums[0] = new PowerlineMedium(11555);
+	pimpl->mediums[1] = new WirelessMedium(11556);
+
+	pimpl->mediums[0]->startPacketArbitrator();
+	pimpl->mediums[1]->startPacketArbitrator();
 }
 
 NetworkSimulator::~NetworkSimulator()
@@ -134,6 +149,6 @@ NetworkSimulator::~NetworkSimulator()
 int
 NetworkSimulator::start(void)
 {
-
+	sleep(2);
 	return 0;
 }

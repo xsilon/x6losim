@@ -12,10 +12,10 @@ class PacketArbitrator_pimpl;
 class PacketArbitrator
 {
 public:
-	PacketArbitrator(const char * name);
+	PacketArbitrator(const char * name, int port);
 	virtual ~PacketArbitrator();
 
-	int start(int port);
+	int start();
 	void *run();
 private:
 	static void *run_helper(void * thisarg) {
@@ -27,11 +27,14 @@ private:
 class PhysicalMedium
 {
 public:
-	PhysicalMedium(const char * name) {
-		pktArbitrator = new PacketArbitrator(name);
+	PhysicalMedium(const char * name, int port) {
+		pktArbitrator = new PacketArbitrator(name, port);
 	}
 	virtual ~PhysicalMedium() {
 		delete pktArbitrator;
+	}
+	void startPacketArbitrator() {
+		pktArbitrator->start();
 	}
 private:
 	PacketArbitrator *pktArbitrator;
@@ -39,12 +42,18 @@ private:
 
 class PowerlineMedium : public PhysicalMedium
 {
+public:
+	PowerlineMedium(int port) : PhysicalMedium("PLC", port) {
 
+	}
 };
 
 class WirelessMedium : public PhysicalMedium
 {
+public:
+	WirelessMedium(int port) : PhysicalMedium("AIR", port) {
 
+	}
 };
 
 class NetworkSimulator_pimpl;
