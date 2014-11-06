@@ -6,6 +6,7 @@ compile
 config.guess
 config.status
 config.sub
+config.log
 configure
 depcomp
 install-sh
@@ -13,3 +14,5 @@ missing
 .dirstamp
 .deps/
 x6losim
+*.o
+*~
