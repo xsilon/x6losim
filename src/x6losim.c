@@ -292,7 +292,8 @@ main(int argc, char *argv[]) {
 	sigaddset(&sigset, SIGINT);
 	sigaddset(&sigset, SIGTERM);
 	sigaddset(&sigset, SIGHUP);
-	sigprocmask(SIG_UNBLOCK, &sigset, &oldset);	if (signal(SIGINT, signal_handler) == SIG_IGN)
+	sigprocmask(SIG_UNBLOCK, &sigset, &oldset);
+	if (signal(SIGINT, signal_handler) == SIG_IGN)
 		signal(SIGINT, SIG_IGN);
 	if (signal(SIGHUP, signal_handler) == SIG_IGN)
 		signal(SIGHUP, SIG_IGN);

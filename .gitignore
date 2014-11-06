@@ -10,9 +10,6 @@ configure
 depcomp
 install-sh
 missing
-src/.deps/
-src/Makefile
-src/Makefile.in
-src/a.out
-
-
+.dirstamp
+.deps/
+x6losim

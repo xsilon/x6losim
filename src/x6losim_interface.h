@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #define NETSIM_PKT_HDR_SZ				(128)
+#define NETSIM_PKT_MAX_SZ				(256)
 
 /*
  * We have a 128 byte header followed by the actual 802.15.4 frame.
