@@ -8,6 +8,21 @@
 #ifndef SIM_SIMULATOR_HPP_
 #define SIM_SIMULATOR_HPP_
 
+#include "x6losim_interface.h"
+#include <stdint.h>
+#include <list>
+
+class NetSimPacket
+{
+public:
+	uint8_t * buf() { return pktBuffer; }
+	int bufSize() { return sizeof(pktBuffer); }
+private:
+	uint8_t pktBuffer[NETSIM_PKT_MAX_SZ];
+};
+
+typedef std::list<NetSimPacket *> NetSimPktList;
+
 class PacketArbitrator_pimpl;
 class PacketArbitrator
 {
@@ -17,6 +32,9 @@ public:
 
 	int start();
 	void *run();
+
+	// This will get the current pkt list that has been filled and switch t
+	void getCapturedPackets(NetSimPktList &pktList);
 private:
 	static void *run_helper(void * thisarg) {
 		return ((PacketArbitrator *)thisarg)->run();

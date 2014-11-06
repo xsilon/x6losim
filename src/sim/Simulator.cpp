@@ -4,10 +4,10 @@
  *  Created on: 6 Nov 2014
  *      Author: martin
  */
-#include "x6losim_interface.h"
 #include "Simulator.hpp"
 #include "log/log.hpp"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -21,6 +21,7 @@
 
 // _____________________________________________ PacketArbitrator Implementation
 
+
 class PacketArbitrator_pimpl {
 public:
 	bool running;
@@ -30,6 +31,9 @@ public:
 		int sockfd;
 		int port;
 		struct sockaddr_in servaddr;
+
+		NetSimPktList pktList;
+		pthread_mutex_t pktListMutex;
 	} rx;
 };
 
@@ -38,10 +42,13 @@ PacketArbitrator::PacketArbitrator(const char * name, int port)
 	pimpl = new PacketArbitrator_pimpl();
 	pimpl->name = strdup(name);
 	pimpl->rx.port = port;
+	pthread_mutex_init(&pimpl->rx.pktListMutex, NULL);
 }
 
 PacketArbitrator::~PacketArbitrator()
 {
+	// @todo implement select and use a pipe to unblock socket read.
+	// under mutex free all packets in list
 	if (pimpl) {
 		if (pimpl->name)
 			free((void *)pimpl->name);
@@ -63,7 +70,7 @@ void *
 PacketArbitrator::run()
 {
 	uint32_t pkts_rx = 0;
-	uint8_t *pkt_buf;
+	NetSimPacket *pkt;
 
 	pimpl->rx.sockfd=socket(AF_INET,SOCK_DGRAM,0);
 	if (pimpl->rx.sockfd == -1) {
@@ -87,24 +94,27 @@ PacketArbitrator::run()
 
 	pimpl->running = true;
 
-	pkt_buf = (uint8_t *)malloc(NETSIM_PKT_MAX_SZ);
 	while (pimpl->running) {
 		struct sockaddr_in cliaddr;
 		socklen_t len;
 		int n;
 
+		pkt = new NetSimPacket();
 		len = sizeof(cliaddr);
-		n = recvfrom(pimpl->rx.sockfd, pkt_buf, NETSIM_PKT_MAX_SZ, 0,
+		n = recvfrom(pimpl->rx.sockfd, pkt->buf(), pkt->bufSize(), 0,
 					 (struct sockaddr *)&cliaddr, &len);
 
 		if (n == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 				continue;
+			//@todo other ERR codes
 		} else if (n == 0) {
 			continue;
 		}
 
-		//x6losim_recv(sim.pktbuf, n);
+		pthread_mutex_lock(&pimpl->rx.pktListMutex);
+		pimpl->rx.pktList.push_back(pkt);
+		pthread_mutex_unlock(&pimpl->rx.pktListMutex);
 
 		xlog(LOG_INFO, "%d: Received packet %d from %s", n, pkts_rx,
 			 inet_ntoa(cliaddr.sin_addr));
@@ -112,8 +122,22 @@ PacketArbitrator::run()
 	}
 
 	close(pimpl->rx.sockfd);
-	free(pkt_buf);
 	pthread_exit(NULL);
+}
+
+void
+PacketArbitrator::getCapturedPackets(NetSimPktList &pktList)
+{
+	std::list<NetSimPacket *>::iterator iter;
+	// Copy packets into the passed list under the mutex so other packets can't
+	// be received
+	pthread_mutex_lock(&pimpl->rx.pktListMutex);
+	for(iter = pimpl->rx.pktList.begin(); iter != pimpl->rx.pktList.end(); ) {
+		pktList.push_back(*iter);
+		iter = pimpl->rx.pktList.erase(iter);
+	}
+	pthread_mutex_unlock(&pimpl->rx.pktListMutex);
+	assert(pimpl->rx.pktList.empty());
 }
 
 // _____________________________________________ NetworkSimulator Implementation
