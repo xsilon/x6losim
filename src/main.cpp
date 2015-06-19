@@ -10,8 +10,7 @@ using namespace std;
 
 #define X6LOSIM_VERSION		"0.1.0"
 
-
-bool quit = false;
+static NetworkSimulator * sim;
 
 
 static void
@@ -20,8 +19,9 @@ signal_handler(int signum) {
 	switch (signum) {
 	case SIGINT:
 	case SIGTERM:
-		xlog(LOG_NOTICE, "x6losim quit detected, attempting to stop");
-		quit = true;
+		xlog(LOG_NOTICE, "x6losim terminate detected, attempting to stop");
+		if(sim)
+			sim->stop();
 		break;
 	case SIGHUP:
 		break;
@@ -35,7 +35,6 @@ int main( int argc, char* argv[] )
 	sigset_t sigset, oldset;
 	int opt;
 	bool debug = false;
-	NetworkSimulator * sim;
 
 	while ((opt = getopt(argc, argv, "x")) != -1) {
 		switch (opt) {

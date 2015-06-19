@@ -81,7 +81,9 @@ public:
 	NetworkSimulator(bool debug = false);
 	virtual ~NetworkSimulator();
 
+	void interval(long nanoseconds);
 	int start(void);
+	int stop(void);
 
 private:
 	NetworkSimulator_pimpl * pimpl;

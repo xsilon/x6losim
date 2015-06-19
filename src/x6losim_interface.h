@@ -19,19 +19,22 @@
 
 #define NETSIM_PKT_HDR_SZ				(128)
 #define NETSIM_PKT_MAX_SZ				(256)
+#define NETSIM_INTERFACE_VERION				(0x00000001)
 
 /*
  * We have a 128 byte header followed by the actual 802.15.4 frame.
  */
 struct netsim_pkt_hdr
 {
+	/* Used to check NetSim and Node are using the same structure */
+	uint32_t interface_version;
 	uint8_t source_addr[8];
 	uint16_t psdu_len; /* length of the actual 802.15.4 frame after this hdr */
 	uint8_t rep_code; /* the repitition code it was sent at */
 	int8_t tx_power; /* the power it was sent at */
 	uint8_t cca_mode; /* the cca mode used */
 	int8_t rssi; /* Received signal strength, set by simulator */
-};
+} __attribute__((__packed__ ));
 
 
 #endif
