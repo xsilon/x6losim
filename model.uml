@@ -147,32 +147,33 @@ DST SA === MAC SA</body>
       <transition xmi:type="uml:Transition" xmi:id="_ekuaIBW_EeWQMZsnnZ3B6g" source="_jjXJQBW9EeWQMZsnnZ3B6g" target="_lfdCgBW9EeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_e4oNkBW_EeWQMZsnnZ3B6g" source="_lfdCgBW9EeWQMZsnnZ3B6g" target="_jjXJQBW9EeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_62ZqkBXAEeWQMZsnnZ3B6g" name="starttx" source="_lKYqEBXAEeWQMZsnnZ3B6g" target="_mEXmEBXAEeWQMZsnnZ3B6g"/>
-      <transition xmi:type="uml:Transition" xmi:id="__iBsMBXAEeWQMZsnnZ3B6g" name="failed" source="_mEXmEBXAEeWQMZsnnZ3B6g" target="_8wjDEBXAEeWQMZsnnZ3B6g"/>
-      <transition xmi:type="uml:Transition" xmi:id="_BzupEBXBEeWQMZsnnZ3B6g" name="success || (timeout &amp;&amp; tos == 1)" source="_mEXmEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
-      <transition xmi:type="uml:Transition" xmi:id="_rAEZIBXCEeWQMZsnnZ3B6g" name="backoff timeout &amp;&amp; attempt &lt; maxBackoffs" source="_8wjDEBXAEeWQMZsnnZ3B6g" target="_mEXmEBXAEeWQMZsnnZ3B6g"/>
-      <transition xmi:type="uml:Transition" xmi:id="_0toqoBXCEeWQMZsnnZ3B6g" name="timeout &amp;&amp; tos == 0" source="_8wjDEBXAEeWQMZsnnZ3B6g" target="_De1jMBXFEeWQMZsnnZ3B6g">
-        <effect xmi:type="uml:Activity" xmi:id="_gPlDUBXIEeWQMZsnnZ3B6g" name="Generate Tx Interrupt"/>
+      <transition xmi:type="uml:Transition" xmi:id="_BzupEBXBEeWQMZsnnZ3B6g" name="success || (timeout &amp;&amp; (tos == 1 || tos == 2))" source="_mEXmEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_0toqoBXCEeWQMZsnnZ3B6g" name="timeout &amp;&amp; tos == 0" source="_mEXmEBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g">
+        <effect xmi:type="uml:Activity" xmi:id="_gPlDUBXIEeWQMZsnnZ3B6g" name="Tx Interrupt"/>
       </transition>
-      <transition xmi:type="uml:Transition" xmi:id="_775oIBXCEeWQMZsnnZ3B6g" name="AR not set" source="_n8dJEBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_775oIBXCEeWQMZsnnZ3B6g" name="AR not set" source="_n8dJEBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g">
+        <effect xmi:type="uml:Activity" xmi:id="_BOYgEBZgEeWQMZsnnZ3B6g" name="Tx Interrupt"/>
+      </transition>
       <transition xmi:type="uml:Transition" xmi:id="_9q_AIBXCEeWQMZsnnZ3B6g" name="AR Set" source="_n8dJEBXAEeWQMZsnnZ3B6g" target="_rQZmEBXAEeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_HrL5wBXDEeWQMZsnnZ3B6g" name="tAck expires &amp;&amp; no Ack" source="_rQZmEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
-      <transition xmi:type="uml:Transition" xmi:id="_NFdxIBXDEeWQMZsnnZ3B6g" name="Ack Received" source="_rQZmEBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_NFdxIBXDEeWQMZsnnZ3B6g" name="Ack Received" source="_rQZmEBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g">
+        <effect xmi:type="uml:Activity" xmi:id="_F142sBZgEeWQMZsnnZ3B6g" name="Tx Interrupt"/>
+      </transition>
       <transition xmi:type="uml:Transition" xmi:id="_dS6QIBXDEeWQMZsnnZ3B6g" name="packet received on rx multicast address" source="_lKYqEBXAEeWQMZsnnZ3B6g" target="_x1nmkBXAEeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_x2mWoBXDEeWQMZsnnZ3B6g" name="packet received" source="_mEXmEBXAEeWQMZsnnZ3B6g" target="_x1nmkBXAEeWQMZsnnZ3B6g"/>
-      <transition xmi:type="uml:Transition" xmi:id="_zitTIBXDEeWQMZsnnZ3B6g" name="packet received" source="_8wjDEBXAEeWQMZsnnZ3B6g" target="_x1nmkBXAEeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_8KxVIBXDEeWQMZsnnZ3B6g" name="Filter pass &amp;&amp; AR bit set" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_wNjckBXAEeWQMZsnnZ3B6g">
         <effect xmi:type="uml:Activity" xmi:id="_rKAPcBZKEeWQMZsnnZ3B6g" name="Rx Interrupt"/>
       </transition>
-      <transition xmi:type="uml:Transition" xmi:id="_FWePsBXEEeWQMZsnnZ3B6g" name="timeout &amp;&amp; tos == 1" source="_8wjDEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_WJ1fMBXEEeWQMZsnnZ3B6g" source="_wNjckBXAEeWQMZsnnZ3B6g" target="_De1jMBXFEeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_CfDhMBXFEeWQMZsnnZ3B6g" source="_kzf0EBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_1ZSS4BXGEeWQMZsnnZ3B6g" name="pkt crc fail" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_De1jMBXFEeWQMZsnnZ3B6g">
         <effect xmi:type="uml:Activity" xmi:id="__lfjkBZHEeWQMZsnnZ3B6g" name="Generate Rx Fail Interrupt"/>
       </transition>
-      <transition xmi:type="uml:Transition" xmi:id="_wEF1wBZIEeWQMZsnnZ3B6g" name="Filter pass &amp;&amp; AR bit not set" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_De1jMBXFEeWQMZsnnZ3B6g">
+      <transition xmi:type="uml:Transition" xmi:id="_wEF1wBZIEeWQMZsnnZ3B6g" name="Filter Accept &amp;&amp; AR bit not set" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_De1jMBXFEeWQMZsnnZ3B6g">
         <effect xmi:type="uml:Activity" xmi:id="_4idJMBZIEeWQMZsnnZ3B6g" name="Rx Interrupt"/>
       </transition>
-      <transition xmi:type="uml:Transition" xmi:id="_4jYEUBZKEeWQMZsnnZ3B6g" name="Filter fail || Ack Packet" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_4jYEUBZKEeWQMZsnnZ3B6g" name="Filter Reject" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_-UMuQBZcEeWQMZsnnZ3B6g" name="mac bypassed" source="_lKYqEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
       <subvertex xmi:type="uml:Pseudostate" xmi:id="_i34jUBW9EeWQMZsnnZ3B6g" name="start"/>
       <subvertex xmi:type="uml:State" xmi:id="_jjXJQBW9EeWQMZsnnZ3B6g" name="Idle"/>
       <subvertex xmi:type="uml:State" xmi:id="_lfdCgBW9EeWQMZsnnZ3B6g" name="Packet Transmit"/>
@@ -187,12 +188,88 @@ DST SA === MAC SA</body>
       <subvertex xmi:type="uml:State" xmi:id="_x1nmkBXAEeWQMZsnnZ3B6g" name="Rx Pkt">
         <doActivity xmi:type="uml:Activity" xmi:id="_m6t2cBZIEeWQMZsnnZ3B6g" name="HW Frame Filtering"/>
       </subvertex>
-      <subvertex xmi:type="uml:State" xmi:id="_8wjDEBXAEeWQMZsnnZ3B6g" name="backoff">
-        <doActivity xmi:type="uml:Activity" xmi:id="_TylCABXGEeWQMZsnnZ3B6g" name="Inc backoffs"/>
-      </subvertex>
       <subvertex xmi:type="uml:State" xmi:id="_De1jMBXFEeWQMZsnnZ3B6g" name="Idle"/>
     </region>
   </packagedElement>
+  <packagedElement xmi:type="uml:Interaction" xmi:id="_6Bc8IBZbEeWQMZsnnZ3B6g" name="Interaction1">
+    <lifeline xmi:type="uml:Lifeline" xmi:id="_A3ltgBZcEeWQMZsnnZ3B6g" name="QEMU Node" coveredBy="_003GARZcEeWQMZsnnZ3B6g _2VS-ARZcEeWQMZsnnZ3B6g _ipyKwBZeEeWQMZsnnZ3B6g _BWaTUBZjEeWQMZsnnZ3B6g _BWa6YBZjEeWQMZsnnZ3B6g _JFVt4BZjEeWQMZsnnZ3B6g _U38EIBZhEeWQMZsnnZ3B6g _U3_HcBZhEeWQMZsnnZ3B6g _UyZK4BZjEeWQMZsnnZ3B6g _rUzn4BZjEeWQMZsnnZ3B6g _fUWRQBZkEeWQMZsnnZ3B6g"/>
+    <lifeline xmi:type="uml:Lifeline" xmi:id="_CKs7MBZcEeWQMZsnnZ3B6g" name="x60losim" coveredBy="_003tEBZcEeWQMZsnnZ3B6g _2VS-ABZcEeWQMZsnnZ3B6g _BWaTUBZjEeWQMZsnnZ3B6g _BWa6YBZjEeWQMZsnnZ3B6g _JFVt4BZjEeWQMZsnnZ3B6g _U38EIBZhEeWQMZsnnZ3B6g _U3_HcBZhEeWQMZsnnZ3B6g _fUW4UBZkEeWQMZsnnZ3B6g"/>
+    <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_003GARZcEeWQMZsnnZ3B6g" name="MessageSend" covered="_A3ltgBZcEeWQMZsnnZ3B6g" message="_003GABZcEeWQMZsnnZ3B6g"/>
+    <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_003tEBZcEeWQMZsnnZ3B6g" name="MessageRecv" covered="_CKs7MBZcEeWQMZsnnZ3B6g" message="_003GABZcEeWQMZsnnZ3B6g"/>
+    <fragment xmi:type="uml:StateInvariant" xmi:id="_ipyKwBZeEeWQMZsnnZ3B6g" name="CA" covered="_A3ltgBZcEeWQMZsnnZ3B6g">
+      <invariant xmi:type="uml:Constraint" xmi:id="_ipyx0BZeEeWQMZsnnZ3B6g" name="s == CCA"/>
+    </fragment>
+    <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_2VS-ABZcEeWQMZsnnZ3B6g" name="MessageSend0" covered="_CKs7MBZcEeWQMZsnnZ3B6g" message="_2VSW8BZcEeWQMZsnnZ3B6g"/>
+    <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_2VS-ARZcEeWQMZsnnZ3B6g" name="MessageRecv0" covered="_A3ltgBZcEeWQMZsnnZ3B6g" message="_2VSW8BZcEeWQMZsnnZ3B6g"/>
+    <fragment xmi:type="uml:CombinedFragment" xmi:id="_BWaTUBZjEeWQMZsnnZ3B6g" name="CombinedFragment0" covered="_CKs7MBZcEeWQMZsnnZ3B6g _A3ltgBZcEeWQMZsnnZ3B6g" interactionOperator="alt">
+      <operand xmi:type="uml:InteractionOperand" xmi:id="_BWa6YBZjEeWQMZsnnZ3B6g" name="InteractionOperand" covered="_CKs7MBZcEeWQMZsnnZ3B6g _A3ltgBZcEeWQMZsnnZ3B6g">
+        <fragment xmi:type="uml:CombinedFragment" xmi:id="_U38EIBZhEeWQMZsnnZ3B6g" name="CombinedFragment" covered="_CKs7MBZcEeWQMZsnnZ3B6g _A3ltgBZcEeWQMZsnnZ3B6g" interactionOperator="loop">
+          <operand xmi:type="uml:InteractionOperand" xmi:id="_U3_HcBZhEeWQMZsnnZ3B6g" name="InteractionOperand" covered="_CKs7MBZcEeWQMZsnnZ3B6g _A3ltgBZcEeWQMZsnnZ3B6g">
+            <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_LHYwERZhEeWQMZsnnZ3B6g" name="MessageSend1" message="_LHYwEBZhEeWQMZsnnZ3B6g"/>
+            <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_LHZXIBZhEeWQMZsnnZ3B6g" name="MessageRecv1" message="_LHYwEBZhEeWQMZsnnZ3B6g"/>
+            <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_QqsnoBZhEeWQMZsnnZ3B6g" name="MessageSend2" message="_QqsAkBZhEeWQMZsnnZ3B6g"/>
+            <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_QqsnoRZhEeWQMZsnnZ3B6g" name="MessageRecv2" message="_QqsAkBZhEeWQMZsnnZ3B6g"/>
+            <fragment xmi:type="uml:StateInvariant" xmi:id="_UyZK4BZjEeWQMZsnnZ3B6g" name="Idle" covered="_A3ltgBZcEeWQMZsnnZ3B6g">
+              <invariant xmi:type="uml:Constraint" xmi:id="_UyZK4RZjEeWQMZsnnZ3B6g" name=""/>
+            </fragment>
+            <guard xmi:type="uml:InteractionConstraint" xmi:id="_U4BjsBZhEeWQMZsnnZ3B6g">
+              <specification xmi:type="uml:StringExpression" xmi:id="_u14z4BZhEeWQMZsnnZ3B6g" name="Test" symbol="">
+                <operand xmi:type="uml:LiteralString" xmi:id="_ylt7oBZhEeWQMZsnnZ3B6g" name="bo" value="attempts &lt; maxBackoffs"/>
+              </specification>
+            </guard>
+          </operand>
+        </fragment>
+        <guard xmi:type="uml:InteractionConstraint" xmi:id="_BWa6YRZjEeWQMZsnnZ3B6g">
+          <specification xmi:type="uml:StringExpression" xmi:id="_Hp8t8BZjEeWQMZsnnZ3B6g">
+            <operand xmi:type="uml:LiteralString" xmi:id="_Hp8t8RZjEeWQMZsnnZ3B6g" value="Failed CCA"/>
+          </specification>
+          <maxint xmi:type="uml:LiteralInteger" xmi:id="_BWa6ZBZjEeWQMZsnnZ3B6g" value="1"/>
+          <minint xmi:type="uml:LiteralInteger" xmi:id="_BWa6YxZjEeWQMZsnnZ3B6g"/>
+        </guard>
+      </operand>
+      <operand xmi:type="uml:InteractionOperand" xmi:id="_JFVt4BZjEeWQMZsnnZ3B6g" name="InteractionOperand0" covered="_CKs7MBZcEeWQMZsnnZ3B6g _A3ltgBZcEeWQMZsnnZ3B6g">
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_ctagsBZjEeWQMZsnnZ3B6g" name="MessageSend" message="_ctZ5oBZjEeWQMZsnnZ3B6g"/>
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_ctagsRZjEeWQMZsnnZ3B6g" name="MessageRecv" message="_ctZ5oBZjEeWQMZsnnZ3B6g"/>
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_eb9tMBZjEeWQMZsnnZ3B6g" name="MessageSend0" message="_eb9GIBZjEeWQMZsnnZ3B6g"/>
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_eb9tMRZjEeWQMZsnnZ3B6g" name="MessageRecv0" message="_eb9GIBZjEeWQMZsnnZ3B6g"/>
+        <fragment xmi:type="uml:StateInvariant" xmi:id="_rUzn4BZjEeWQMZsnnZ3B6g" name="Tx Pkt" covered="_A3ltgBZcEeWQMZsnnZ3B6g">
+          <invariant xmi:type="uml:Constraint" xmi:id="_rUzn4RZjEeWQMZsnnZ3B6g" name=""/>
+        </fragment>
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_fUWRQBZkEeWQMZsnnZ3B6g" name="MessageSend1" covered="_A3ltgBZcEeWQMZsnnZ3B6g" message="_fUVqMBZkEeWQMZsnnZ3B6g"/>
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_fUW4UBZkEeWQMZsnnZ3B6g" name="MessageRecv1" covered="_CKs7MBZcEeWQMZsnnZ3B6g" message="_fUVqMBZkEeWQMZsnnZ3B6g"/>
+        <guard xmi:type="uml:InteractionConstraint" xmi:id="_JFVt4RZjEeWQMZsnnZ3B6g">
+          <specification xmi:type="uml:StringExpression" xmi:id="_OZJw4BZjEeWQMZsnnZ3B6g">
+            <operand xmi:type="uml:StringExpression" xmi:id="_OZJw4RZjEeWQMZsnnZ3B6g">
+              <operand xmi:type="uml:LiteralString" xmi:id="_OZJw4hZjEeWQMZsnnZ3B6g" value="Channel Clear"/>
+            </operand>
+          </specification>
+          <maxint xmi:type="uml:LiteralInteger" xmi:id="_JFWU8BZjEeWQMZsnnZ3B6g" value="1"/>
+          <minint xmi:type="uml:LiteralInteger" xmi:id="_JFVt4xZjEeWQMZsnnZ3B6g"/>
+        </guard>
+      </operand>
+      <operand xmi:type="uml:InteractionOperand" xmi:id="_4Cjs4BZjEeWQMZsnnZ3B6g" name="InteractionOperand1">
+        <guard xmi:type="uml:InteractionConstraint" xmi:id="_4CkT8BZjEeWQMZsnnZ3B6g">
+          <specification xmi:type="uml:LiteralString" xmi:id="_4CkT8RZjEeWQMZsnnZ3B6g" value="undefined"/>
+          <maxint xmi:type="uml:LiteralInteger" xmi:id="_4CkT8xZjEeWQMZsnnZ3B6g" value="1"/>
+          <minint xmi:type="uml:LiteralInteger" xmi:id="_4CkT8hZjEeWQMZsnnZ3B6g"/>
+        </guard>
+      </operand>
+    </fragment>
+    <message xmi:type="uml:Message" xmi:id="_003GABZcEeWQMZsnnZ3B6g" name="CCA Request" messageSort="asynchCall" receiveEvent="_003tEBZcEeWQMZsnnZ3B6g" sendEvent="_003GARZcEeWQMZsnnZ3B6g"/>
+    <message xmi:type="uml:Message" xmi:id="_2VSW8BZcEeWQMZsnnZ3B6g" name="CCA Request Fail" messageSort="asynchCall" receiveEvent="_2VS-ARZcEeWQMZsnnZ3B6g" sendEvent="_2VS-ABZcEeWQMZsnnZ3B6g"/>
+    <message xmi:type="uml:Message" xmi:id="_LHYwEBZhEeWQMZsnnZ3B6g" name="CCA Request" messageSort="asynchCall" receiveEvent="_LHZXIBZhEeWQMZsnnZ3B6g" sendEvent="_LHYwERZhEeWQMZsnnZ3B6g"/>
+    <message xmi:type="uml:Message" xmi:id="_QqsAkBZhEeWQMZsnnZ3B6g" name="CCA Request Fail" messageSort="asynchCall" receiveEvent="_QqsnoRZhEeWQMZsnnZ3B6g" sendEvent="_QqsnoBZhEeWQMZsnnZ3B6g"/>
+    <message xmi:type="uml:Message" xmi:id="_ctZ5oBZjEeWQMZsnnZ3B6g" name="CCA Request" messageSort="asynchCall" receiveEvent="_ctagsRZjEeWQMZsnnZ3B6g" sendEvent="_ctagsBZjEeWQMZsnnZ3B6g"/>
+    <message xmi:type="uml:Message" xmi:id="_eb9GIBZjEeWQMZsnnZ3B6g" name="CCA Request Channel Clear" messageSort="asynchCall" receiveEvent="_eb9tMRZjEeWQMZsnnZ3B6g" sendEvent="_eb9tMBZjEeWQMZsnnZ3B6g"/>
+    <message xmi:type="uml:Message" xmi:id="_fUVqMBZkEeWQMZsnnZ3B6g" name="TxPkt Indication" messageSort="asynchCall" receiveEvent="_fUW4UBZkEeWQMZsnnZ3B6g" sendEvent="_fUWRQBZkEeWQMZsnnZ3B6g"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_qsWh8BZ9EeW3gvG6F2ESaQ" name="HanaduNode">
+    <generalization xmi:type="uml:Generalization" xmi:id="_w9hlEBZ9EeW3gvG6F2ESaQ" general="_so2D0BZ9EeW3gvG6F2ESaQ"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_rensYBZ9EeW3gvG6F2ESaQ" name="WirelessNode">
+    <generalization xmi:type="uml:Generalization" xmi:id="_xhnJkBZ9EeW3gvG6F2ESaQ" general="_so2D0BZ9EeW3gvG6F2ESaQ"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_so2D0BZ9EeW3gvG6F2ESaQ" name="DeviceNode"/>
   <profileApplication xmi:type="uml:ProfileApplication" xmi:id="_GEVXIBUHEeWuvfbxuHWSXQ">
     <eAnnotations xmi:type="ecore:EAnnotation" xmi:id="_GEiLcBUHEeWuvfbxuHWSXQ" source="http://www.eclipse.org/uml2/2.0.0/UML">
       <references xmi:type="ecore:EPackage" href="pathmap://PAPYRUS_ACTIONLANGUAGE_PROFILE/ActionLanguage-Profile.profile.uml#_sYse0YZLEeKyw49uR6nx3g"/>

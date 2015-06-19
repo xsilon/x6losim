@@ -11,6 +11,7 @@
 #include "x6losim_interface.h"
 #include <stdint.h>
 #include <list>
+#include <time.h>
 
 class NetSimPacket
 {
@@ -42,26 +43,28 @@ private:
 	PacketArbitrator_pimpl * pimpl;
 };
 
+class PhysicalMedium_pimpl;
 class PhysicalMedium
 {
 public:
-	PhysicalMedium(const char * name, int port) {
-		pktArbitrator = new PacketArbitrator(name, port);
-	}
-	virtual ~PhysicalMedium() {
-		delete pktArbitrator;
-	}
-	void startPacketArbitrator() {
-		pktArbitrator->start();
-	}
+	PhysicalMedium(const char * name, int port, clockid_t clockidToUse);
+	virtual ~PhysicalMedium();
+	void startPacketArbitrator();
+
+	void *run();
 private:
-	PacketArbitrator *pktArbitrator;
+	PhysicalMedium_pimpl * pimpl;
+
+	void
+	interval(long nanoseconds);
 };
 
 class PowerlineMedium : public PhysicalMedium
 {
 public:
-	PowerlineMedium(int port) : PhysicalMedium("PLC", port) {
+	PowerlineMedium(int port, clockid_t clockidToUse) :
+		PhysicalMedium("PLC", port, clockidToUse)
+	{
 
 	}
 };
@@ -69,9 +72,19 @@ public:
 class WirelessMedium : public PhysicalMedium
 {
 public:
-	WirelessMedium(int port) : PhysicalMedium("AIR", port) {
+	WirelessMedium(int port, clockid_t clockidToUse) :
+		PhysicalMedium("AIR", port, clockidToUse)
+	{
 
 	}
+};
+
+enum AcceptStatus
+{
+	ACCEPT_UNBLOCK = 1,
+	ACCEPT_OK = 0,
+	ACCEPT_TIMEOUT = -1,
+	ACCEPT_ERROR = -2
 };
 
 class NetworkSimulator_pimpl;
@@ -82,11 +95,16 @@ public:
 	virtual ~NetworkSimulator();
 
 	void interval(long nanoseconds);
-	int start(void);
-	int stop(void);
+	void start(void);
+	void stop(void);
 
 private:
 	NetworkSimulator_pimpl * pimpl;
+
+	AcceptStatus
+	acceptConnections(int *hanClient, int *airClient);
+	int
+	setupAcceptFdSet();
 };
 
 

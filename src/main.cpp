@@ -15,7 +15,6 @@ static NetworkSimulator * sim;
 
 static void
 signal_handler(int signum) {
-	int i;
 	switch (signum) {
 	case SIGINT:
 	case SIGTERM:
@@ -65,6 +64,9 @@ int main( int argc, char* argv[] )
 	try {
 		sim = new NetworkSimulator(debug);
 		sim->start();
+	} catch(const char * ex) {
+		xlog(LOG_ERR, "Exception caught");
+		xlog(LOG_ERR, ex);
 	} catch(...) {
 		xlog(LOG_ERR, "Exception caught");
 	}

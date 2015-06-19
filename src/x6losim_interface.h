@@ -21,6 +21,9 @@
 #define NETSIM_PKT_MAX_SZ				(256)
 #define NETSIM_INTERFACE_VERION				(0x00000001)
 
+#define HANADU_NODE_PORT				(11555)
+#define WIRELESS_NODE_PORT				(11556)
+
 /*
  * We have a 128 byte header followed by the actual 802.15.4 frame.
  */

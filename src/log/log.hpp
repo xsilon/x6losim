@@ -4,6 +4,8 @@
 #include <syslog.h>
 #include <stdint.h>
 
+extern int loglevel;
+
 void
 _xlog(const char * file, const char * function, int line, int level,
       const char *fmt, ...);

@@ -5,6 +5,7 @@
  *      Author: martin
  */
 #include "Simulator.hpp"
+#include "socket/Socket.hpp"
 #include "log/log.hpp"
 
 #include <assert.h>
@@ -20,6 +21,118 @@
 #include <arpa/inet.h>
 
 #include <vector>
+
+// _______________________________________________ PhysicalMedium Implementation
+
+enum PhysicalMediumState {
+	STOPPED,
+	RUNNING,
+	STOPPING
+};
+
+class PhysicalMedium_pimpl {
+public:
+	PhysicalMedium_pimpl(clockid_t clockidToUse) : clockidToUse(clockidToUse)
+	{
+		state = STOPPED;
+	}
+	enum PhysicalMediumState state;
+	clockid_t clockidToUse;
+	struct timespec curTime;
+//	PacketArbitrator *pktArbitrator;
+};
+
+
+PhysicalMedium::PhysicalMedium(const char * name, int port, clockid_t clockidToUse)
+{
+	pimpl = new PhysicalMedium_pimpl(clockidToUse);
+//	pktArbitrator = new PacketArbitrator(name, port);
+}
+
+PhysicalMedium::~PhysicalMedium() {
+//	delete pktArbitrator;
+	if (pimpl)
+		delete pimpl;
+}
+
+void PhysicalMedium::startPacketArbitrator()
+{
+//	pktArbitrator->start();
+}
+
+void
+PhysicalMedium::interval(long nanoseconds)
+{
+	struct timeval start, finish;
+	struct timespec request, remain;
+	int rv;
+
+	pimpl->curTime.tv_nsec += nanoseconds;
+	if (pimpl->curTime.tv_nsec >= 1000000000) {
+		pimpl->curTime.tv_sec += pimpl->curTime.tv_nsec / 1000000000;
+		pimpl->curTime.tv_nsec %= 1000000000;
+	}
+	request = pimpl->curTime;
+
+	if (gettimeofday(&start, NULL) == -1)
+		throw "gettimeofday unrecoverable error";
+	for (;;) {
+		rv = clock_nanosleep(pimpl->clockidToUse, TIMER_ABSTIME,
+				     &request, &remain);
+
+		if (rv != 0 && rv != EINTR) {
+			/* Must be EFAULT or EINVAL which means some dodgy coding
+			 * going on somewhere, exit cleanly */
+			xlog(LOG_ALERT, "clock_nanosleep failed (%s)", strerror(rv));
+			throw "clock_nanosleep unrecoverable error";
+		}
+
+		if (loglevel == LOG_DEBUG) {
+			if (gettimeofday(&finish, NULL) == -1)
+				throw "gettimeofday unrecoverable error";
+			xlog(LOG_DEBUG, "Slept: %.6f secs",
+				finish.tv_sec - start.tv_sec
+				+ (finish.tv_usec - start.tv_usec) / 1000000.0);
+		}
+
+		if (rv == 0)
+			break; /* sleep completed */
+
+		xlog(LOG_DEBUG, "... Remaining: %ld.%09ld",
+			(long) remain.tv_sec, remain.tv_nsec);
+		request = remain;
+
+		xlog(LOG_DEBUG, "... Restarting\n");
+	}
+
+}
+
+void *PhysicalMedium::run() {
+
+	pimpl->state = RUNNING;
+	if (clock_gettime(pimpl->clockidToUse, &pimpl->curTime) == -1)
+		throw "clock_gettime: unrecoverable error";
+
+	xlog(LOG_NOTICE, "Initial CurTime value: %ld.%09ld\n",
+		(long) pimpl->curTime.tv_sec, (long) pimpl->curTime.tv_nsec);
+	do {
+		interval(1000000000L);
+		xlog(LOG_NOTICE, "CurTime value: %ld.%09ld\n",
+			(long) pimpl->curTime.tv_sec, (long) pimpl->curTime.tv_nsec);
+
+	} while(pimpl->state == RUNNING);
+	xlog(LOG_NOTICE, "Network Simulator Stopped");
+	pimpl->state = STOPPED;
+	return 0;
+}
+
+// TODO: Implement
+#if 0
+void PhysicalMedium::stop() {
+	pimpl->state = STOPPING;
+}
+#endif
+
 
 // _____________________________________________ PacketArbitrator Implementation
 
@@ -42,7 +155,7 @@ public:
 			uint32_t pkts_ok;
 			uint32_t pkts_dropped;
 		} stats;
-} rx;
+	} rx;
 };
 
 PacketArbitrator::PacketArbitrator(const char * name, int port)
@@ -75,6 +188,10 @@ PacketArbitrator::start()
 
 	rc = pthread_create(&pimpl->rx.thread, NULL,
 			PacketArbitrator::run_helper, (void *)this);
+
+	if (rc != 0)
+		throw "PacketArbitrator failed to start";
+
 	return 0;
 }
 
@@ -166,45 +283,6 @@ PacketArbitrator::getCapturedPackets(NetSimPktList &pktList)
 
 // _____________________________________________ NetworkSimulator Implementation
 
-enum NetSimState {
-	STOPPED,
-	RUNNING,
-	STOPPING
-};
-
-class NetworkSimulator_pimpl {
-public:
-	NetworkSimulator_pimpl(bool debugIn, int numMediums) : mediums(2)
-	{
-		debug = debugIn;
-		state = STOPPED;
-	}
-	enum NetSimState state;
-	bool debug;
-	clockid_t clockid_to_use;
-	struct timespec curTime;
-	std::vector<PhysicalMedium *> mediums;
-};
-
-NetworkSimulator::NetworkSimulator(bool debug)
-{
-	pimpl = new NetworkSimulator_pimpl(debug, 2);
-
-	// TODO: Get ports from a config file or script.
-	pimpl->mediums[0] = new PowerlineMedium(11555);
-	pimpl->mediums[1] = new WirelessMedium(11556);
-
-	pimpl->mediums[0]->startPacketArbitrator();
-	pimpl->mediums[1]->startPacketArbitrator();
-}
-
-NetworkSimulator::~NetworkSimulator()
-{
-	if (pimpl)
-		delete pimpl;
-}
-
-
 clockid_t
 get_highres_clock(void)
 {
@@ -235,83 +313,282 @@ get_highres_clock(void)
 	return -1;
 }
 
-void
-NetworkSimulator::interval(long nanoseconds)
-{
-	struct timeval start, finish;
-	struct timespec request, remain;
-	int rv;
 
-	pimpl->curTime.tv_nsec += nanoseconds;
-	if (pimpl->curTime.tv_nsec >= 1000000000) {
-		pimpl->curTime.tv_sec += pimpl->curTime.tv_nsec / 1000000000;
-		pimpl->curTime.tv_nsec %= 1000000000;
+class NetworkSimulator_pimpl {
+public:
+	NetworkSimulator_pimpl(bool debugIn, int numMediums) : mediums(2)
+	{
+		debug = debugIn;
+		stop = false;
+		hanServer = NULL;
+		airServer = NULL;
+		clockidToUse = -1;
+		unblocker = new SocketUnblocker();
 	}
-	request = pimpl->curTime;
-
-	if (gettimeofday(&start, NULL) == -1)
-		throw "gettimeofday unrecoverable error";
-	for (;;) {
-		rv = clock_nanosleep(pimpl->clockid_to_use, TIMER_ABSTIME,
-				     &request, &remain);
-
-		if (rv != 0 && rv != EINTR) {
-			/* Must be EFAULT or EINVAL which means some dodgy coding
-			 * going on somewhere, exit cleanly */
-			xlog(LOG_ALERT, "clock_nanosleep failed (%s)", strerror(rv));
-			throw "clock_nanosleep unrecoverable error";
-		}
-
-		if (pimpl->debug) {
-			if (gettimeofday(&finish, NULL) == -1)
-				throw "gettimeofday unrecoverable error";
-			xlog(LOG_DEBUG, "Slept: %.6f secs",
-				finish.tv_sec - start.tv_sec
-				+ (finish.tv_usec - start.tv_usec) / 1000000.0);
-		}
-
-		if (rv == 0)
-			break; /* sleep completed */
-
-		xlog(LOG_DEBUG, "... Remaining: %ld.%09ld",
-			(long) remain.tv_sec, remain.tv_nsec);
-		request = remain;
-
-		xlog(LOG_DEBUG, "... Restarting\n");
+	~NetworkSimulator_pimpl()
+	{
+		delete unblocker;
 	}
+	bool debug;
+	bool stop;
+	clockid_t clockidToUse;
+	std::vector<PhysicalMedium *> mediums;
+	Socket *hanServer, *airServer;
+	SocketUnblocker *unblocker;
+	fd_set acceptFdSet;
+};
 
-}
-
-int
-NetworkSimulator::start(void)
+NetworkSimulator::NetworkSimulator(bool debug)
 {
-	/* TODO: Use clock_getres to check timer resolution */
-	pimpl->clockid_to_use = get_highres_clock();
-	if (pimpl->clockid_to_use == -1) {
+	pimpl = new NetworkSimulator_pimpl(debug, 2);
+	pimpl->clockidToUse = get_highres_clock();
+	if (pimpl->clockidToUse == -1) {
 		throw "Failed to get high resolution clock";
 	}
 
-	pimpl->state = RUNNING;
-        if (clock_gettime(pimpl->clockid_to_use, &pimpl->curTime) == -1)
-            throw "clock_gettime: unrecoverable error";
+	// TODO: Get ports from a config file or script.
+	pimpl->mediums[0] = new PowerlineMedium(11555, pimpl->clockidToUse);
+	pimpl->mediums[1] = new WirelessMedium(11556, pimpl->clockidToUse);
 
-        xlog(LOG_NOTICE, "Initial CurTime value: %ld.%09ld\n",
-                (long) pimpl->curTime.tv_sec, (long) pimpl->curTime.tv_nsec);
-	do {
-		interval(1000000000L);
-	        xlog(LOG_NOTICE, "CurTime value: %ld.%09ld\n",
-	                (long) pimpl->curTime.tv_sec, (long) pimpl->curTime.tv_nsec);
-
-	} while(pimpl->state == RUNNING);
-	xlog(LOG_NOTICE, "Network Simulator Stopped");
-	pimpl->state == STOPPED;
-	return 0;
+	pimpl->mediums[0]->startPacketArbitrator();
+	pimpl->mediums[1]->startPacketArbitrator();
 }
 
-int
+NetworkSimulator::~NetworkSimulator()
+{
+	if (pimpl)
+		delete pimpl;
+}
+
+void
+NetworkSimulator::start(void)
+{
+
+//	enum xccc_status accept_rc;
+//	enum xccc_status handler_rv;
+//	int rc;
+//	struct xccc_ctrl_child * child_ctx = xccc->context;
+	int rv;
+
+	xlog(LOG_INFO, "Starting Xsilon 6lo Network Simulator\n");
+
+	pimpl->hanServer = new Socket(AF_INET, SOCK_STREAM, 0);
+	pimpl->airServer = new Socket(AF_INET, SOCK_STREAM, 0);
+
+	/* Set socket as non blocking as we will use select and set the
+	 * close on exec flag as if we fork to run a system command we don't
+	 * want the new process to inherit this socket descriptor.
+	 * Also set SO_REUSEADDR as we are going to bind to any address and
+	 * want to reconnect if required. */
+	pimpl->hanServer->setBlocking(false);
+	pimpl->hanServer->setCloseOnExec(true);
+	pimpl->hanServer->setReuseAddress(true);
+	pimpl->hanServer->bindAnyAddress(HANADU_NODE_PORT);
+	pimpl->hanServer->setPassive(20);
+
+	pimpl->airServer->setBlocking(false);
+	pimpl->airServer->setCloseOnExec(true);
+	pimpl->airServer->setReuseAddress(true);
+	pimpl->airServer->bindAnyAddress(WIRELESS_NODE_PORT);
+	pimpl->airServer->setPassive(20);
+
+	/* So we now have 2 sockets for accepting connection from either a
+	 * hanadu or wireless node for the control channel.  Next we use
+	 * select to multiplex both these sockets with the unblocker to
+	 * actually do the accept.  Once accepted we use the client fd to
+	 * create a new Socket that can be tied to either a HanaduNode or
+	 * WirelessNode and placed on the corresponding PhyiscalMedium
+	 */
+	do {
+		int hanClient, airClient;
+
+		rv = acceptConnections(&hanClient, &airClient);
+		if(rv == ACCEPT_OK) {
+			//TODO: Create Client socket and associate with medium
+
+			//socket_set_close_on_exec(child_ctx->cli_sockfd, true);
+		}
+	} while (!pimpl->stop && rv != ACCEPT_UNBLOCK);
+
+	/* Clean up */
+	delete pimpl->hanServer;
+	delete pimpl->airServer;
+
+}
+
+void
 NetworkSimulator::stop(void) {
 	//TODO: Stop arbitrators
 	//pimpl->mediums[0]->stopPacketArbitrator();
 	//pimpl->mediums[1]->stopPacketArbitrator();
-	pimpl->state = STOPPING;
+	pimpl->stop = true;
+	//TODO: Unblock accept connections.
+	pimpl->unblocker->unblock();
+}
+
+int
+NetworkSimulator::setupAcceptFdSet()
+{
+	int fd_max = -1;
+	int fd;
+
+	FD_ZERO(&pimpl->acceptFdSet);
+
+	fd = pimpl->hanServer->getSockFd();
+	if(fd < 0) {
+		xlog(LOG_ERR, "Invalid Hanadu socket fd (%d)", fd);
+		throw "Invalid Hanadu Socket";
+	}
+	fd_max = fd;
+	FD_SET(fd, &pimpl->acceptFdSet);
+
+	fd = pimpl->airServer->getSockFd();
+	if(fd < 0) {
+		xlog(LOG_ERR, "Invalid Wireless socket fd (%d)", fd);
+		throw "Invalid Wireless Socket";
+	}
+	if (fd > fd_max)
+			fd_max = fd;
+	FD_SET(fd, &pimpl->acceptFdSet);
+
+
+	fd = pimpl->unblocker->getReadPipe();
+	if(fd < 0) {
+		xlog(LOG_WARNING, "Invalid unblock read pipe fd (%d)", fd);
+		throw "Invalid Unblocker";
+	}
+	FD_SET(fd, &pimpl->acceptFdSet);
+	if (fd > fd_max)
+		fd_max = fd;
+
+	return fd_max;
+}
+
+AcceptStatus
+NetworkSimulator::acceptConnections(int *hanClient, int *airClient) {
+	bool restart = false;
+	AcceptStatus rv;
+
+	*hanClient = -1;
+	*airClient = -1;
+	do {
+		int fdmax;
+		int count;
+
+		restart = false;
+		/*
+		* Setup the Read file descriptor set which consists of Hanadu,
+		* Wireless and the Unblocker file descriptors.
+		*/
+		fdmax = setupAcceptFdSet();
+		if (fdmax > 0) {
+			/* Wait for a connection to arrive in the queue, or for
+			 * the unblock socket pipe. There is no timeout so it
+			 * will wait forever. */
+			xlog(LOG_INFO, "x6losim Socket server is waiting for connections ...");
+
+			count = select(
+					fdmax+1,
+					&pimpl->acceptFdSet, /* accept will come in on read set */
+					NULL,   /* No write set */
+					NULL,   /* No exception set */
+					NULL);  /* Block indefinitely */
+			xlog(LOG_INFO, "Socket server listen finished.");
+
+			if(count == -1) {
+				if (errno == EINTR) {
+					/* Select system call was interrupted by a signal so restart
+					 * the system call */
+					xlog(LOG_WARNING, "Select system call interrupted, restarting");
+					restart = true;
+					continue;
+				}
+				xlog(LOG_ERR, "select failed (%s)", strerror(errno));
+				rv = ACCEPT_ERROR;
+			} else if(count == 0) {
+				xlog(LOG_ERR, "select timedout");
+				rv = ACCEPT_TIMEOUT;
+			} else {
+				/* Connection or unblock */
+				if(FD_ISSET(pimpl->hanServer->getSockFd(), &pimpl->acceptFdSet)) {
+					/* Connection. */
+
+					/* This shouldn't block as the select will have already informed us
+					 * that a connection is waiting. */
+					*hanClient = accept(pimpl->hanServer->getSockFd(), NULL, NULL);
+					/* @todo check for EWOULDBLOCK, shouldn't happen though. */
+					if (*hanClient < 0) {
+						xlog(LOG_ERR,
+						    "Failed to accept hanadu client connection (%s)",
+						    strerror(errno));
+						rv = ACCEPT_ERROR;
+					} else {
+						xlog(LOG_INFO, "Server Socket Hanadu Node Client Accepted");
+					}
+					count--;
+				}
+				if(FD_ISSET(pimpl->airServer->getSockFd(), &pimpl->acceptFdSet)) {
+					/* Connection. */
+
+					/* This shouldn't block as the select will have already informed us
+					 * that a connection is waiting. */
+					*airClient = accept(pimpl->airServer->getSockFd(), NULL, NULL);
+					/* @todo check for EWOULDBLOCK, shouldn't happen though. */
+					if (*airClient < 0) {
+						xlog(LOG_ERR,
+						    "Failed to accept wireless client connection (%s)",
+						    strerror(errno));
+						rv = ACCEPT_ERROR;
+					} else {
+						xlog(LOG_INFO, "Server Socket Wireless Node Client Accepted");
+					}
+					count--;
+				}
+
+				if(FD_ISSET(pimpl->unblocker->getReadPipe(),
+						&pimpl->acceptFdSet)
+				) {
+					char buf[1];
+					/* Task has been closed, read byte from pipe and set state to closing. */
+					xlog(LOG_INFO, " Listen has been unblocked.");
+
+					if(read(pimpl->unblocker->getReadPipe(), buf, 1) != 1) {
+						xlog(LOG_ERR, "Failed to read unblock pipe.");
+					}
+					xlog(LOG_INFO, "Unblock pipe flushed.");
+					if(*hanClient != -1) {
+						close(*hanClient);
+					}
+					*hanClient = -1;
+					if(*airClient != -1) {
+						close(*airClient);
+					}
+					*airClient = -1;
+					count--;
+					/* Unblocking trumps previous status codes */
+					rv = ACCEPT_UNBLOCK;
+				}
+				if(count != 0) {
+					/* Problem. */
+					if(*hanClient != -1) {
+						close(*hanClient);
+					}
+					*hanClient = -1;
+					if(*airClient != -1) {
+						close(*airClient);
+					}
+					*airClient = -1;
+					if (rv == ACCEPT_OK)
+						rv = ACCEPT_ERROR;
+					xlog(LOG_ERR, "Accept Failure, unknown fd from select");
+				}
+			}
+		} else {
+			xlog(LOG_ERR, "Accept Failure, invalid fdmax value");
+			rv = ACCEPT_ERROR;
+		}
+	} while(restart);
+
+	return rv;
+
 }
