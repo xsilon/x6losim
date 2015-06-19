@@ -291,21 +291,21 @@ get_highres_clock(void)
 
 	if (clock_getres(CLOCK_REALTIME, &res) != -1) {
 		resolution = (res.tv_sec * 1000000000L) + res.tv_nsec;
-		xlog(LOG_ERR, "CLOCK_REALTIME: %ld ns\n", resolution);
+		xlog(LOG_NOTICE, "CLOCK_REALTIME: %ld ns\n", resolution);
 		if (resolution == 1)
 			return CLOCK_REALTIME;
 	}
 
 	if (clock_getres(CLOCK_MONOTONIC, &res) != -1) {
 		resolution = (res.tv_sec * 1000000000L) + res.tv_nsec;
-		xlog(LOG_ERR, "CLOCK_MONOTONIC: %ld ns\n", resolution);
+		xlog(LOG_NOTICE, "CLOCK_MONOTONIC: %ld ns\n", resolution);
 		if (resolution == 1)
 			return CLOCK_MONOTONIC;
 	}
 
 	if (clock_getres(CLOCK_PROCESS_CPUTIME_ID, &res) != -1) {
 		resolution = (res.tv_sec * 1000000000L) + res.tv_nsec;
-		xlog(LOG_ERR, "CLOCK_PROCESS_CPUTIME_ID: %ld ns\n", resolution);
+		xlog(LOG_NOTICE, "CLOCK_PROCESS_CPUTIME_ID: %ld ns\n", resolution);
 		if (resolution == 1)
 			return CLOCK_PROCESS_CPUTIME_ID;
 	}
