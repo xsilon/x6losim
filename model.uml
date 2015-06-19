@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:uml="http://www.eclipse.org/uml2/5.0.0/UML" xmi:id="_nVjLEBUFEeWuvfbxuHWSXQ" name="model">
+  <packagedElement xmi:type="uml:Class" xmi:id="_tlqeQBUFEeWuvfbxuHWSXQ" name="NetworkSimulator">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_lXr4gBW7EeWQMZsnnZ3B6g" name="powerlineMedium" type="_3RgRcBUFEeWuvfbxuHWSXQ" aggregation="composite" association="_lXsfkBW7EeWQMZsnnZ3B6g">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_lXr4gRW7EeWQMZsnnZ3B6g" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_lXr4ghW7EeWQMZsnnZ3B6g" value="1"/>
+    </ownedAttribute>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_ltvBABW7EeWQMZsnnZ3B6g" name="wirelessMedium" type="_4tcD8BUFEeWuvfbxuHWSXQ" aggregation="composite" association="_ltvoEBW7EeWQMZsnnZ3B6g">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_ltvBARW7EeWQMZsnnZ3B6g" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_ltvBAhW7EeWQMZsnnZ3B6g" value="1"/>
+    </ownedAttribute>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_rN110BUGEeWuvfbxuHWSXQ" name="start"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_w9RTQBUFEeWuvfbxuHWSXQ" name="NetSimPacket">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_Fk1-wBUHEeWuvfbxuHWSXQ" name="pktBuffer" visibility="private">
+      <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/EcorePrimitiveTypes.library.uml#EByteArray"/>
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_WNw40BUHEeWuvfbxuHWSXQ" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_WNxf4BUHEeWuvfbxuHWSXQ" value="1"/>
+    </ownedAttribute>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_zFargBUFEeWuvfbxuHWSXQ" name="PacketArbitrator"/>
+  <packagedElement xmi:type="uml:Class" xmi:id="_1x6G8BUFEeWuvfbxuHWSXQ" name="PhysicalMedium"/>
+  <packagedElement xmi:type="uml:Class" xmi:id="_3RgRcBUFEeWuvfbxuHWSXQ" name="PowerlineMedium">
+    <generalization xmi:type="uml:Generalization" xmi:id="_i8H3QBUGEeWuvfbxuHWSXQ" general="_1x6G8BUFEeWuvfbxuHWSXQ"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_4tcD8BUFEeWuvfbxuHWSXQ" name="WirelessMedium">
+    <generalization xmi:type="uml:Generalization" xmi:id="_kDThwBUGEeWuvfbxuHWSXQ" general="_1x6G8BUFEeWuvfbxuHWSXQ"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Association" xmi:id="_-0pSwBUFEeWuvfbxuHWSXQ" visibility="private" memberEnd="_-0pSwRUFEeWuvfbxuHWSXQ _-0hW8BUFEeWuvfbxuHWSXQ" navigableOwnedEnd="_-0hW8BUFEeWuvfbxuHWSXQ">
+    <name xsi:nil="true"/>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_-0hW8BUFEeWuvfbxuHWSXQ" name="pktArbitrator" type="_zFargBUFEeWuvfbxuHWSXQ" aggregation="composite" association="_-0pSwBUFEeWuvfbxuHWSXQ">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_-0hW8RUFEeWuvfbxuHWSXQ" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_-0hW8hUFEeWuvfbxuHWSXQ" value="1"/>
+    </ownedEnd>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_-0pSwRUFEeWuvfbxuHWSXQ" type="_1x6G8BUFEeWuvfbxuHWSXQ" association="_-0pSwBUFEeWuvfbxuHWSXQ">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_-0pSwhUFEeWuvfbxuHWSXQ" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_-0pSwxUFEeWuvfbxuHWSXQ" value="1"/>
+    </ownedEnd>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_dlNngBUHEeWuvfbxuHWSXQ" name="NetSimPktList" visibility="public">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_3jvoABW1EeWQMZsnnZ3B6g" type="_w9RTQBUFEeWuvfbxuHWSXQ" aggregation="composite" association="_3jxdMBW1EeWQMZsnnZ3B6g">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_3jvoARW1EeWQMZsnnZ3B6g"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_3jvoAhW1EeWQMZsnnZ3B6g" value="*"/>
+    </ownedAttribute>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Association" xmi:id="_3jxdMBW1EeWQMZsnnZ3B6g" memberEnd="_3jxdMRW1EeWQMZsnnZ3B6g _3jvoABW1EeWQMZsnnZ3B6g">
+    <name xsi:nil="true"/>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_3jxdMRW1EeWQMZsnnZ3B6g" name="netSimPktList" type="_dlNngBUHEeWuvfbxuHWSXQ" association="_3jxdMBW1EeWQMZsnnZ3B6g">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_3jxdMhW1EeWQMZsnnZ3B6g" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_3jxdMxW1EeWQMZsnnZ3B6g" value="1"/>
+    </ownedEnd>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Association" xmi:id="_lXsfkBW7EeWQMZsnnZ3B6g" memberEnd="_lXsfkRW7EeWQMZsnnZ3B6g _lXr4gBW7EeWQMZsnnZ3B6g">
+    <name xsi:nil="true"/>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_lXsfkRW7EeWQMZsnnZ3B6g" type="_tlqeQBUFEeWuvfbxuHWSXQ" association="_lXsfkBW7EeWQMZsnnZ3B6g">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_lXsfkhW7EeWQMZsnnZ3B6g" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_lXsfkxW7EeWQMZsnnZ3B6g" value="1"/>
+    </ownedEnd>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Association" xmi:id="_ltvoEBW7EeWQMZsnnZ3B6g" memberEnd="_ltvoERW7EeWQMZsnnZ3B6g _ltvBABW7EeWQMZsnnZ3B6g">
+    <name xsi:nil="true"/>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_ltvoERW7EeWQMZsnnZ3B6g" type="_tlqeQBUFEeWuvfbxuHWSXQ" association="_ltvoEBW7EeWQMZsnnZ3B6g">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_ltvoEhW7EeWQMZsnnZ3B6g" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_ltvoExW7EeWQMZsnnZ3B6g" value="1"/>
+    </ownedEnd>
+  </packagedElement>
+  <packagedElement xmi:type="uml:StateMachine" xmi:id="_ekgpoBW9EeWQMZsnnZ3B6g" name="Physical Medium State Machine" classifierBehavior="_0VCCUBZPEeWQMZsnnZ3B6g">
+    <ownedBehavior xmi:type="uml:Activity" xmi:id="_0VCCUBZPEeWQMZsnnZ3B6g" name="Activity1" node="_3TA2YBZPEeWQMZsnnZ3B6g _OP8sMBZQEeWQMZsnnZ3B6g _iXwH8BZQEeWQMZsnnZ3B6g _rhiW8BZQEeWQMZsnnZ3B6g _tfClcBZQEeWQMZsnnZ3B6g _ty4HcBZQEeWQMZsnnZ3B6g _uBcu8BZQEeWQMZsnnZ3B6g _uSdmcBZQEeWQMZsnnZ3B6g _vOlQcBZQEeWQMZsnnZ3B6g _wDwk8BZQEeWQMZsnnZ3B6g _AubLcBZREeWQMZsnnZ3B6g _A_NZcBZREeWQMZsnnZ3B6g" group="_dUkh8BZQEeWQMZsnnZ3B6g _ujjWcBZQEeWQMZsnnZ3B6g _BzPecBZREeWQMZsnnZ3B6g _CHYicBZREeWQMZsnnZ3B6g _FZkr8BZREeWQMZsnnZ3B6g _F4ZV8BZREeWQMZsnnZ3B6g">
+      <ownedComment xmi:type="uml:Comment" xmi:id="_I9O_8BZREeWQMZsnnZ3B6g" annotatedElement="_AubLcBZREeWQMZsnnZ3B6g">
+        <body>SRC PANID == MAC PANID ||
+MAC PANID == 0xFFFF</body>
+      </ownedComment>
+      <ownedComment xmi:type="uml:Comment" xmi:id="_CqZ6gBZSEeWQMZsnnZ3B6g" annotatedElement="_A_NZcBZREeWQMZsnnZ3B6g">
+        <body>SA Mode != 00 &amp;&amp;
+PAN Coord &amp;&amp;
+SRC PANDID == MAC PANID</body>
+      </ownedComment>
+      <ownedComment xmi:type="uml:Comment" xmi:id="_uFR0IBZSEeWQMZsnnZ3B6g" annotatedElement="_ty4HcBZQEeWQMZsnnZ3B6g">
+        <body>DST PANID == 0xFFFF ||
+DEST PANID == MAC PANID</body>
+      </ownedComment>
+      <ownedComment xmi:type="uml:Comment" xmi:id="_BhOaABZUEeWQMZsnnZ3B6g" annotatedElement="_wDwk8BZQEeWQMZsnnZ3B6g">
+        <body>DST SA == 0xFFFF ||
+DST SA === MAC SA</body>
+      </ownedComment>
+      <ownedComment xmi:type="uml:Comment" xmi:id="_CSC9gBZVEeWQMZsnnZ3B6g" annotatedElement="_vOlQcBZQEeWQMZsnnZ3B6g">
+        <body>DST EA == MAC EA</body>
+      </ownedComment>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_Qn-TgBZQEeWQMZsnnZ3B6g" name="Rx Packet" target="_OP8sMBZQEeWQMZsnnZ3B6g" source="_3TA2YBZPEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_ezBc8BZQEeWQMZsnnZ3B6g" name="Promisc" source="_OP8sMBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_jNKtABZQEeWQMZsnnZ3B6g" name="Promisc No" target="_iXwH8BZQEeWQMZsnnZ3B6g" source="_OP8sMBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_yu9m8BZQEeWQMZsnnZ3B6g" name="Ack Frame" source="_iXwH8BZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_7Scq8BZQEeWQMZsnnZ3B6g" name="Not Ack" target="_rhiW8BZQEeWQMZsnnZ3B6g" source="_iXwH8BZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_YH7ogBZREeWQMZsnnZ3B6g" name="Beacon Frame" target="_AubLcBZREeWQMZsnnZ3B6g" source="_rhiW8BZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_uJ_xgBZREeWQMZsnnZ3B6g" name="no" source="_AubLcBZREeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_y8nzABZREeWQMZsnnZ3B6g" name="yes" source="_AubLcBZREeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_33zTkBZREeWQMZsnnZ3B6g" name="DA Mode == 00 (Elided)" target="_A_NZcBZREeWQMZsnnZ3B6g" source="_tfClcBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_7gkKABZREeWQMZsnnZ3B6g" name="Not Beacon" target="_tfClcBZQEeWQMZsnnZ3B6g" source="_rhiW8BZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_ORM-gBZSEeWQMZsnnZ3B6g" name="no" source="_A_NZcBZREeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_Qb1DABZSEeWQMZsnnZ3B6g" name="yes" source="_A_NZcBZREeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_XJNhABZSEeWQMZsnnZ3B6g" target="_ty4HcBZQEeWQMZsnnZ3B6g" source="_tfClcBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_ZTJpABZSEeWQMZsnnZ3B6g" name="no" source="_ty4HcBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_hoN2gBZSEeWQMZsnnZ3B6g" name="yes" target="_uBcu8BZQEeWQMZsnnZ3B6g" source="_ty4HcBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_lxuCgBZSEeWQMZsnnZ3B6g" name="DA Mode != Short" target="_uSdmcBZQEeWQMZsnnZ3B6g" source="_uBcu8BZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_U_kegBZTEeWQMZsnnZ3B6g" name="DA Mode == 11 (Ext)" target="_vOlQcBZQEeWQMZsnnZ3B6g" source="_uSdmcBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_h-o9ABZTEeWQMZsnnZ3B6g" name="DA == 10 (Short)" target="_wDwk8BZQEeWQMZsnnZ3B6g" source="_uBcu8BZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_pyIugBZTEeWQMZsnnZ3B6g" name="Unknown DA Mode" source="_uSdmcBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_yW2hkBZTEeWQMZsnnZ3B6g" name="yes" source="_vOlQcBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_5EOYgBZTEeWQMZsnnZ3B6g" name="no" source="_vOlQcBZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_8-enkBZTEeWQMZsnnZ3B6g" name="yes" source="_wDwk8BZQEeWQMZsnnZ3B6g"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_9XQ7ABZTEeWQMZsnnZ3B6g" name="no" source="_wDwk8BZQEeWQMZsnnZ3B6g"/>
+      <group xmi:type="uml:ActivityPartition" xmi:id="_dUkh8BZQEeWQMZsnnZ3B6g" name="Accept Frame"/>
+      <group xmi:type="uml:ActivityPartition" xmi:id="_ujjWcBZQEeWQMZsnnZ3B6g" name="RejectFrame"/>
+      <group xmi:type="uml:ActivityPartition" xmi:id="_BzPecBZREeWQMZsnnZ3B6g" name="Reject"/>
+      <group xmi:type="uml:ActivityPartition" xmi:id="_CHYicBZREeWQMZsnnZ3B6g" name="Accept"/>
+      <group xmi:type="uml:ActivityPartition" xmi:id="_FZkr8BZREeWQMZsnnZ3B6g" name="Accept"/>
+      <group xmi:type="uml:ActivityPartition" xmi:id="_F4ZV8BZREeWQMZsnnZ3B6g" name="Reject"/>
+      <node xmi:type="uml:InitialNode" xmi:id="_3TA2YBZPEeWQMZsnnZ3B6g" name="InitialNode1" outgoing="_Qn-TgBZQEeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_OP8sMBZQEeWQMZsnnZ3B6g" name="IsPromisc" incoming="_Qn-TgBZQEeWQMZsnnZ3B6g" outgoing="_ezBc8BZQEeWQMZsnnZ3B6g _jNKtABZQEeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_iXwH8BZQEeWQMZsnnZ3B6g" name="DecisionNode1" incoming="_jNKtABZQEeWQMZsnnZ3B6g" outgoing="_yu9m8BZQEeWQMZsnnZ3B6g _7Scq8BZQEeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_rhiW8BZQEeWQMZsnnZ3B6g" name="DecisionNode2" incoming="_7Scq8BZQEeWQMZsnnZ3B6g" outgoing="_YH7ogBZREeWQMZsnnZ3B6g _7gkKABZREeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_tfClcBZQEeWQMZsnnZ3B6g" name="DecisionNode3" incoming="_7gkKABZREeWQMZsnnZ3B6g" outgoing="_33zTkBZREeWQMZsnnZ3B6g _XJNhABZSEeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_ty4HcBZQEeWQMZsnnZ3B6g" name="DecisionNode4" incoming="_XJNhABZSEeWQMZsnnZ3B6g" outgoing="_ZTJpABZSEeWQMZsnnZ3B6g _hoN2gBZSEeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_uBcu8BZQEeWQMZsnnZ3B6g" name="DecisionNode5" incoming="_hoN2gBZSEeWQMZsnnZ3B6g" outgoing="_lxuCgBZSEeWQMZsnnZ3B6g _h-o9ABZTEeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_uSdmcBZQEeWQMZsnnZ3B6g" name="DecisionNode6" incoming="_lxuCgBZSEeWQMZsnnZ3B6g" outgoing="_U_kegBZTEeWQMZsnnZ3B6g _pyIugBZTEeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_vOlQcBZQEeWQMZsnnZ3B6g" name="DecisionNode7" incoming="_U_kegBZTEeWQMZsnnZ3B6g" outgoing="_yW2hkBZTEeWQMZsnnZ3B6g _5EOYgBZTEeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_wDwk8BZQEeWQMZsnnZ3B6g" name="DecisionNode8" incoming="_h-o9ABZTEeWQMZsnnZ3B6g" outgoing="_8-enkBZTEeWQMZsnnZ3B6g _9XQ7ABZTEeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_AubLcBZREeWQMZsnnZ3B6g" name="DecisionNode9" incoming="_YH7ogBZREeWQMZsnnZ3B6g" outgoing="_uJ_xgBZREeWQMZsnnZ3B6g _y8nzABZREeWQMZsnnZ3B6g"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_A_NZcBZREeWQMZsnnZ3B6g" name="DecisionNode10" incoming="_33zTkBZREeWQMZsnnZ3B6g" outgoing="_ORM-gBZSEeWQMZsnnZ3B6g _Qb1DABZSEeWQMZsnnZ3B6g"/>
+    </ownedBehavior>
+    <region xmi:type="uml:Region" xmi:id="_gVI5wBW9EeWQMZsnnZ3B6g" name="Region1">
+      <ownedComment xmi:type="uml:Comment" xmi:id="_oUaykBW_EeWQMZsnnZ3B6g" annotatedElement="_lfdCgBW9EeWQMZsnnZ3B6g">
+        <body>Fail CCA requests whilst in this state</body>
+      </ownedComment>
+      <ownedComment xmi:type="uml:Comment" xmi:id="_UwP5QBXIEeWQMZsnnZ3B6g">
+        <body>Timeout strategy if max number of backoffs happens:
+0 : discard transmission and trigger tx interrupt
+1 : transmit immediately regardless of medium busy
+2:  wait for next medium free and then transmit</body>
+      </ownedComment>
+      <ownedComment xmi:type="uml:Comment" xmi:id="_WDLgwBXIEeWQMZsnnZ3B6g">
+        <body>Time interval for backoff is units of 10uS
+… and the (backoff range is pow(2,MinBE)-1 to pow(2,MaxBE) -1 )
+</body>
+      </ownedComment>
+      <transition xmi:type="uml:Transition" xmi:id="_eIDsQBW_EeWQMZsnnZ3B6g" source="_i34jUBW9EeWQMZsnnZ3B6g" target="_jjXJQBW9EeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_ekuaIBW_EeWQMZsnnZ3B6g" source="_jjXJQBW9EeWQMZsnnZ3B6g" target="_lfdCgBW9EeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_e4oNkBW_EeWQMZsnnZ3B6g" source="_lfdCgBW9EeWQMZsnnZ3B6g" target="_jjXJQBW9EeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_62ZqkBXAEeWQMZsnnZ3B6g" name="starttx" source="_lKYqEBXAEeWQMZsnnZ3B6g" target="_mEXmEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="__iBsMBXAEeWQMZsnnZ3B6g" name="failed" source="_mEXmEBXAEeWQMZsnnZ3B6g" target="_8wjDEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_BzupEBXBEeWQMZsnnZ3B6g" name="success || (timeout &amp;&amp; tos == 1)" source="_mEXmEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_rAEZIBXCEeWQMZsnnZ3B6g" name="backoff timeout &amp;&amp; attempt &lt; maxBackoffs" source="_8wjDEBXAEeWQMZsnnZ3B6g" target="_mEXmEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_0toqoBXCEeWQMZsnnZ3B6g" name="timeout &amp;&amp; tos == 0" source="_8wjDEBXAEeWQMZsnnZ3B6g" target="_De1jMBXFEeWQMZsnnZ3B6g">
+        <effect xmi:type="uml:Activity" xmi:id="_gPlDUBXIEeWQMZsnnZ3B6g" name="Generate Tx Interrupt"/>
+      </transition>
+      <transition xmi:type="uml:Transition" xmi:id="_775oIBXCEeWQMZsnnZ3B6g" name="AR not set" source="_n8dJEBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_9q_AIBXCEeWQMZsnnZ3B6g" name="AR Set" source="_n8dJEBXAEeWQMZsnnZ3B6g" target="_rQZmEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_HrL5wBXDEeWQMZsnnZ3B6g" name="tAck expires &amp;&amp; no Ack" source="_rQZmEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_NFdxIBXDEeWQMZsnnZ3B6g" name="Ack Received" source="_rQZmEBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_dS6QIBXDEeWQMZsnnZ3B6g" name="packet received on rx multicast address" source="_lKYqEBXAEeWQMZsnnZ3B6g" target="_x1nmkBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_x2mWoBXDEeWQMZsnnZ3B6g" name="packet received" source="_mEXmEBXAEeWQMZsnnZ3B6g" target="_x1nmkBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_zitTIBXDEeWQMZsnnZ3B6g" name="packet received" source="_8wjDEBXAEeWQMZsnnZ3B6g" target="_x1nmkBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_8KxVIBXDEeWQMZsnnZ3B6g" name="Filter pass &amp;&amp; AR bit set" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_wNjckBXAEeWQMZsnnZ3B6g">
+        <effect xmi:type="uml:Activity" xmi:id="_rKAPcBZKEeWQMZsnnZ3B6g" name="Rx Interrupt"/>
+      </transition>
+      <transition xmi:type="uml:Transition" xmi:id="_FWePsBXEEeWQMZsnnZ3B6g" name="timeout &amp;&amp; tos == 1" source="_8wjDEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_WJ1fMBXEEeWQMZsnnZ3B6g" source="_wNjckBXAEeWQMZsnnZ3B6g" target="_De1jMBXFEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_CfDhMBXFEeWQMZsnnZ3B6g" source="_kzf0EBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_1ZSS4BXGEeWQMZsnnZ3B6g" name="pkt crc fail" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_De1jMBXFEeWQMZsnnZ3B6g">
+        <effect xmi:type="uml:Activity" xmi:id="__lfjkBZHEeWQMZsnnZ3B6g" name="Generate Rx Fail Interrupt"/>
+      </transition>
+      <transition xmi:type="uml:Transition" xmi:id="_wEF1wBZIEeWQMZsnnZ3B6g" name="Filter pass &amp;&amp; AR bit not set" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_De1jMBXFEeWQMZsnnZ3B6g">
+        <effect xmi:type="uml:Activity" xmi:id="_4idJMBZIEeWQMZsnnZ3B6g" name="Rx Interrupt"/>
+      </transition>
+      <transition xmi:type="uml:Transition" xmi:id="_4jYEUBZKEeWQMZsnnZ3B6g" name="Filter fail || Ack Packet" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
+      <subvertex xmi:type="uml:Pseudostate" xmi:id="_i34jUBW9EeWQMZsnnZ3B6g" name="start"/>
+      <subvertex xmi:type="uml:State" xmi:id="_jjXJQBW9EeWQMZsnnZ3B6g" name="Idle"/>
+      <subvertex xmi:type="uml:State" xmi:id="_lfdCgBW9EeWQMZsnnZ3B6g" name="Packet Transmit"/>
+      <subvertex xmi:type="uml:Pseudostate" xmi:id="_kzf0EBXAEeWQMZsnnZ3B6g" name="Initial1"/>
+      <subvertex xmi:type="uml:State" xmi:id="_lKYqEBXAEeWQMZsnnZ3B6g" name="Idle"/>
+      <subvertex xmi:type="uml:State" xmi:id="_mEXmEBXAEeWQMZsnnZ3B6g" name="CCA">
+        <doActivity xmi:type="uml:Activity" xmi:id="_aomCIBXHEeWQMZsnnZ3B6g" name="Start Backoff Timer"/>
+      </subvertex>
+      <subvertex xmi:type="uml:State" xmi:id="_n8dJEBXAEeWQMZsnnZ3B6g" name="Tx Pkt"/>
+      <subvertex xmi:type="uml:State" xmi:id="_rQZmEBXAEeWQMZsnnZ3B6g" name="Wait Rx Ack"/>
+      <subvertex xmi:type="uml:State" xmi:id="_wNjckBXAEeWQMZsnnZ3B6g" name="Tx Ack"/>
+      <subvertex xmi:type="uml:State" xmi:id="_x1nmkBXAEeWQMZsnnZ3B6g" name="Rx Pkt">
+        <doActivity xmi:type="uml:Activity" xmi:id="_m6t2cBZIEeWQMZsnnZ3B6g" name="HW Frame Filtering"/>
+      </subvertex>
+      <subvertex xmi:type="uml:State" xmi:id="_8wjDEBXAEeWQMZsnnZ3B6g" name="backoff">
+        <doActivity xmi:type="uml:Activity" xmi:id="_TylCABXGEeWQMZsnnZ3B6g" name="Inc backoffs"/>
+      </subvertex>
+      <subvertex xmi:type="uml:State" xmi:id="_De1jMBXFEeWQMZsnnZ3B6g" name="Idle"/>
+    </region>
+  </packagedElement>
+  <profileApplication xmi:type="uml:ProfileApplication" xmi:id="_GEVXIBUHEeWuvfbxuHWSXQ">
+    <eAnnotations xmi:type="ecore:EAnnotation" xmi:id="_GEiLcBUHEeWuvfbxuHWSXQ" source="http://www.eclipse.org/uml2/2.0.0/UML">
+      <references xmi:type="ecore:EPackage" href="pathmap://PAPYRUS_ACTIONLANGUAGE_PROFILE/ActionLanguage-Profile.profile.uml#_sYse0YZLEeKyw49uR6nx3g"/>
+    </eAnnotations>
+    <appliedProfile xmi:type="uml:Profile" href="pathmap://PAPYRUS_ACTIONLANGUAGE_PROFILE/ActionLanguage-Profile.profile.uml#ActionLanguage"/>
+  </profileApplication>
+</uml:Model>
