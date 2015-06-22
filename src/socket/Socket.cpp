@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 // _________________________________________ Scoket Unblock Pipes Implementation
 
@@ -142,24 +143,33 @@ SocketUnblocker::closePipes()
 
 // _______________________________________________________ Socket Implementation
 
-class Socket_pimpl {
+class Socket_pimpl
+{
 public:
-	Socket_pimpl(int d) : domain(d)
+	Socket_pimpl()
 	{
 		fd = -1;
+		domain = AF_UNSPEC;
+		FD_ZERO(&readFdSet);
 	}
 	int fd;
 	int domain;
+	fd_set readFdSet;
 };
 
-Socket::Socket(int domain, int type, int protocol) {
-	pimpl = new Socket_pimpl(domain);
-	pimpl->fd = socket(domain, type, protocol);
-	if (pimpl->fd == -1)
-		throw "ERROR opening socket";
+Socket::Socket()
+{
+	pimpl = new Socket_pimpl();
 }
+
+Socket::Socket(int fd) : Socket()
+{
+	setSockFd(fd);
+}
+
 Socket::~Socket() {
-	close(pimpl->fd);
+	if (pimpl->fd != -1)
+		close(pimpl->fd);
 	if (pimpl)
 		delete pimpl;
 }
@@ -169,6 +179,176 @@ Socket::getSockFd()
 {
 	return pimpl->fd;
 }
+
+void
+Socket::setSockFd(int fd)
+{
+	pimpl->fd = fd;
+}
+
+int
+Socket::sendMsg(char* msg, int msglen)
+{
+	char * m = msg;
+	int left = msglen;
+	int bytes_sent = 0;
+	do {
+		ssize_t n = send(pimpl->fd, m, left, MSG_NOSIGNAL);
+
+		/* Check to see if send was successful */
+		if(n < 0) {
+			xlog(LOG_ERR, "failed to send message to socket");
+			xlog(LOG_ERR, "message: %s", msg);
+			xlog(LOG_ERR, "ErrorCode: %s", strerror(errno));
+			return n;
+		} else {
+			left -= n;
+			m += n;
+			bytes_sent += n;
+		}
+	} while (left > 0);
+
+	return bytes_sent;
+}
+
+int
+Socket::setupReadFdSet(SocketUnblocker * unblocker)
+{
+	int fd_max = -1;
+	int fd;
+
+	FD_ZERO(&pimpl->readFdSet);
+
+	fd = pimpl->fd;
+	if(fd < 0) {
+		xlog(LOG_ERR, "Invalid socket fd (%d)", fd);
+		throw "Invalid Socket";
+	}
+	fd_max = fd;
+	FD_SET(fd, &pimpl->readFdSet);
+
+	if (unblocker) {
+		fd = unblocker->getReadPipe();
+		if(fd < 0) {
+			xlog(LOG_WARNING, "Invalid unblock read pipe fd (%d)", fd);
+			throw "Invalid Unblocker";
+		}
+		FD_SET(fd, &pimpl->readFdSet);
+		if (fd > fd_max)
+			fd_max = fd;
+	}
+
+	return fd_max;
+
+}
+
+SocketReadStatus
+Socket::recvReply(char * replyMsgBuf, int replyMsgLen, int msTimeout,
+		  int *bytesReadOut, SocketUnblocker * unblocker)
+{
+	struct timeval timeout, *timeout_p;  /* Timeout for read */
+	enum SocketReadStatus rv = SOCK_READ_OK;
+
+	if (bytesReadOut == NULL)
+		throw "recvReply given NULL bytesReadOut";
+
+	do {
+		int fdmax;
+		int count;
+
+		/*
+		* Setup the Read file descriptor set that will be used in the select when
+		* listening.
+		*/
+		fdmax = setupReadFdSet(unblocker);
+		if (fdmax > 0) {
+			/*
+			* Setup the timeout, if timeout_usecs_in is 0 then set we need to pass
+			* NULL to the select call so we will use a pointer to the timeval
+			* structure.
+			*/
+			if(msTimeout == 0) {
+				timeout_p = NULL;
+			} else {
+				timeout.tv_sec = msTimeout / 1000;
+				timeout.tv_usec = (msTimeout * 1000) % 1000000;
+				xlog(LOG_DEBUG, "timeout set to (%d sec %d usec)",
+					timeout.tv_sec, timeout.tv_usec);
+				timeout_p = &timeout;
+			}
+
+			count = select(
+					fdmax+1,
+					&pimpl->readFdSet,
+					NULL,   /* No write set */
+					NULL,   /* No exception set */
+					timeout_p);  /* Block indefinitely */
+			xlog(LOG_INFO, "select finished.");
+
+			if(count == -1) {
+				if (errno == EINTR) {
+					/* Select system call was interrupted by a signal so restart
+					 * the system call */
+					xlog(LOG_WARNING, "Select system call interrupted, restarting");
+					continue;
+				}
+				xlog(LOG_ERR, "select failed (%s)", strerror(errno));
+				rv = SOCK_READ_ERROR;
+			} else if(count == 0) {
+				xlog(LOG_ERR, "select timedout");
+				rv = SOCK_READ_TIMEOUT;
+			} else {
+				if(FD_ISSET(pimpl->fd, &pimpl->readFdSet)) {
+					/* recv will return a 0 value if the peer has closed its halfside of
+					 * the connection, < 0 if there was an error */
+					*bytesReadOut = recv(pimpl->fd, replyMsgBuf, replyMsgLen, MSG_NOSIGNAL);
+					assert(*bytesReadOut < replyMsgLen);
+					if (*bytesReadOut > 0) {
+						xlog(LOG_DEBUG, "Rx from Client: (n=%d)\n",
+								*bytesReadOut);
+					} else if (*bytesReadOut == 0) {
+						/* Peer closed connection */
+						xlog(LOG_NOTICE, "Client has closed connection\n");
+						rv = SOCK_READ_CONN_CLOSED;
+					} else {
+						/* Error whilst reading from socket */
+						xlog(LOG_ERR, "Socket read error (%s)",
+							strerror(errno));
+						rv = SOCK_READ_ERROR;
+					}
+					count--;
+				}
+				if(unblocker && FD_ISSET(unblocker->getReadPipe(),
+						    &pimpl->readFdSet)
+				) {
+					char buf[1];
+					/* Task has been closed, read byte from pipe and set state to closing. */
+					xlog(LOG_INFO, " Listen has been unblocked.");
+
+					if(read(unblocker->getReadPipe(), buf, 1) != 1) {
+						xlog(LOG_ERR, "Failed to read unblock pipe.");
+					}
+					xlog(LOG_INFO, "Unblock pipe flushed.");
+					rv = SOCK_READ_UNBLOCKED;
+					count--;
+				}
+
+				if(count != 0) {
+					/* Serious Problem. */
+					if (rv == SOCK_READ_OK)
+						rv = SOCK_READ_ERROR;
+					xlog(LOG_ERR, "Listen Failure, unknown fd from select");
+				}
+			}
+		} else {
+			xlog(LOG_ERR, "Accept Failure, invalid fdmax value");
+			rv =  SOCK_READ_ERROR;
+		}
+	} while(0);
+
+	return rv;
+}
+
 
 int
 Socket::setBlocking(bool blocking) {
@@ -247,38 +427,65 @@ Socket::setReuseAddress(bool reuse) {
 	return rv;
 }
 
+int
+SocketUnblocker::getReadPipe()
+{
+	return pimpl->unblockPipes[UBP_READ];
+}
+
+// _________________________________________________ SocketServer Implementation
+
+class ServerSocket_pimpl {
+public:
+	ServerSocket_pimpl(int port) : port(port)
+	{
+
+	}
+	int port;
+};
+
+//
+ServerSocket::ServerSocket(int port) : Socket()
+{
+	int fd;
+
+	pimpl = new ServerSocket_pimpl(port);
+	fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (fd == -1)
+		throw "ERROR opening socket";
+	setSockFd(fd);
+}
+
+ServerSocket::~ServerSocket()
+{
+	if (pimpl)
+		delete pimpl;
+}
+
+
 /* bind to the any address so we can accept connections to our loop back address
  * and our main IP address(es).
  */
-void
-Socket::bindAnyAddress(int port)
+void ServerSocket::bindAnyAddress()
 {
 	struct sockaddr_in addr;
 	int rc;
 
 	bzero((char *) &addr, sizeof(addr));
 
-	addr.sin_family = pimpl->domain;
+	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
-	addr.sin_port = htons(port);
-	rc = bind(pimpl->fd, (struct sockaddr *) &addr,
+	addr.sin_port = htons(pimpl->port);
+	rc = bind(getSockFd(), (struct sockaddr *) &addr,
 			sizeof(addr));
 	if (rc < 0) {
 		xlog(LOG_ERR, "Bind failed (%d:%s", errno, strerror(errno));
 		throw "ERROR on binding";
 	}
-
 }
 
-void
-Socket::setPassive(int backlog)
+void ServerSocket::setPassive(int backlog)
 {
-	if (listen(pimpl->fd, backlog) != 0)
+	if (listen(getSockFd(), backlog) != 0)
 		throw "ERROR on listen";
-}
-
-int
-SocketUnblocker::getReadPipe()
-{
-	return pimpl->unblockPipes[UBP_READ];
 }

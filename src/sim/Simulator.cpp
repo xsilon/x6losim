@@ -198,6 +198,7 @@ PacketArbitrator::start()
 void *
 PacketArbitrator::run()
 {
+#if 0
 	NetSimPacket *pkt;
 
 	pimpl->rx.sockfd=socket(AF_INET,SOCK_DGRAM,0);
@@ -243,7 +244,7 @@ PacketArbitrator::run()
 		}
 
 		hdr = (struct netsim_pkt_hdr *)pkt->buf();
-		if (hdr->interface_version == NETSIM_INTERFACE_VERION) {
+		if (hdr->interface_version == NETSIM_INTERFACE_VERSION) {
 			pthread_mutex_lock(&pimpl->rx.pktListMutex);
 			pimpl->rx.pktList.push_back(pkt);
 			pthread_mutex_unlock(&pimpl->rx.pktListMutex);
@@ -263,6 +264,7 @@ PacketArbitrator::run()
 	}
 
 	close(pimpl->rx.sockfd);
+#endif
 	pthread_exit(NULL);
 }
 
@@ -279,6 +281,118 @@ PacketArbitrator::getCapturedPackets(NetSimPktList &pktList)
 	}
 	pthread_mutex_unlock(&pimpl->rx.pktListMutex);
 	assert(pimpl->rx.pktList.empty());
+}
+
+// ___________________________________________________ DeviceNode Implementation
+
+class DeviceNode_pimpl {
+public:
+	DeviceNode_pimpl(int sockfd) : sockfd(sockfd)
+	{
+		socket = new Socket(sockfd);
+	}
+	~DeviceNode_pimpl()
+	{
+		delete socket;
+	}
+	int sockfd;
+	Socket * socket;
+};
+
+DeviceNode::DeviceNode(int sockfd)
+{
+	pimpl = new DeviceNode_pimpl(sockfd);
+	pimpl->socket->setCloseOnExec(true);
+
+}
+
+DeviceNode::~DeviceNode()
+{
+	if (pimpl)
+		delete pimpl;
+}
+
+void DeviceNode::registration()
+{
+	struct netsim_to_node_registration_req_pkt * msg;
+	struct node_to_netsim_registration_con_pkt * reply;
+	int msglen = sizeof(*msg);
+	int replyMsgLen = sizeof(*reply);
+	SocketReadStatus readStatus;
+	int bytesRead;
+
+	msg = (netsim_to_node_registration_req_pkt *)malloc(msglen);
+	reply =  (node_to_netsim_registration_con_pkt *)malloc(replyMsgLen);
+
+	msg->hdr.len = sizeof(*msg);
+	msg->hdr.interface_version = NETSIM_INTERFACE_VERSION;
+	/* We'll use the virtual address of the socket instance pointer as this
+	 * is always guaranteed to be unique for each DeviceNode instance. */
+	assert(pimpl->socket != NULL);
+	msg->hdr.node_id = (uint64_t)pimpl->socket;
+
+	pimpl->socket->sendMsg((char *)msg, msglen);
+	/* Wait 5 seconds for reply otherwise node is deemed unreachable */
+	readStatus = pimpl->socket->recvReply((char *)reply, replyMsgLen, 5000,
+			&bytesRead, &NetworkSimulator::getUnblocker());
+	switch (readStatus) {
+	case SOCK_READ_OK:
+		break;
+	case SOCK_READ_CONN_CLOSED:
+	case SOCK_READ_UNBLOCKED:
+		break;
+	case SOCK_READ_TIMEOUT:
+		break;
+	case SOCK_READ_ERROR:
+		break;
+	default:
+		throw "Unknown read status";
+	}
+
+	free(msg);
+}
+
+
+class HanaduDeviceNode_pimpl {
+public:
+	HanaduDeviceNode_pimpl()
+	{
+	}
+	~HanaduDeviceNode_pimpl()
+	{
+	}
+};
+
+HanaduDeviceNode::HanaduDeviceNode(int sockfd) : DeviceNode(sockfd)
+{
+	pimpl = new HanaduDeviceNode_pimpl();
+}
+
+HanaduDeviceNode::~HanaduDeviceNode()
+{
+	if (pimpl)
+		delete pimpl;
+}
+
+class WirelessDeviceNode_pimpl {
+public:
+	WirelessDeviceNode_pimpl()
+	{
+	}
+	~WirelessDeviceNode_pimpl()
+	{
+	}
+};
+
+WirelessDeviceNode::WirelessDeviceNode(int sockfd) : DeviceNode(sockfd)
+{
+	pimpl = new WirelessDeviceNode_pimpl();
+}
+
+WirelessDeviceNode::~WirelessDeviceNode()
+{
+	if (pimpl)
+		delete pimpl;
 }
 
 // _____________________________________________ NetworkSimulator Implementation
@@ -323,18 +437,15 @@ public:
 		hanServer = NULL;
 		airServer = NULL;
 		clockidToUse = -1;
-		unblocker = new SocketUnblocker();
 	}
 	~NetworkSimulator_pimpl()
 	{
-		delete unblocker;
 	}
 	bool debug;
 	bool stop;
 	clockid_t clockidToUse;
 	std::vector<PhysicalMedium *> mediums;
-	Socket *hanServer, *airServer;
-	SocketUnblocker *unblocker;
+	ServerSocket *hanServer, *airServer;
 	fd_set acceptFdSet;
 };
 
@@ -360,20 +471,23 @@ NetworkSimulator::~NetworkSimulator()
 		delete pimpl;
 }
 
+SocketUnblocker& NetworkSimulator::getUnblocker()
+{
+	// Guaranteed to be destroyed. Instantiated on first use.
+	static SocketUnblocker instance;
+	return instance;
+}
+
 void
 NetworkSimulator::start(void)
 {
-
-//	enum xccc_status accept_rc;
-//	enum xccc_status handler_rv;
-//	int rc;
-//	struct xccc_ctrl_child * child_ctx = xccc->context;
 	int rv;
+	int errCount = 0;
 
 	xlog(LOG_INFO, "Starting Xsilon 6lo Network Simulator\n");
 
-	pimpl->hanServer = new Socket(AF_INET, SOCK_STREAM, 0);
-	pimpl->airServer = new Socket(AF_INET, SOCK_STREAM, 0);
+	pimpl->hanServer = new ServerSocket(HANADU_NODE_PORT);
+	pimpl->airServer = new ServerSocket(WIRELESS_NODE_PORT);
 
 	/* Set socket as non blocking as we will use select and set the
 	 * close on exec flag as if we fork to run a system command we don't
@@ -383,13 +497,13 @@ NetworkSimulator::start(void)
 	pimpl->hanServer->setBlocking(false);
 	pimpl->hanServer->setCloseOnExec(true);
 	pimpl->hanServer->setReuseAddress(true);
-	pimpl->hanServer->bindAnyAddress(HANADU_NODE_PORT);
+	pimpl->hanServer->bindAnyAddress();
 	pimpl->hanServer->setPassive(20);
 
 	pimpl->airServer->setBlocking(false);
 	pimpl->airServer->setCloseOnExec(true);
 	pimpl->airServer->setReuseAddress(true);
-	pimpl->airServer->bindAnyAddress(WIRELESS_NODE_PORT);
+	pimpl->airServer->bindAnyAddress();
 	pimpl->airServer->setPassive(20);
 
 	/* So we now have 2 sockets for accepting connection from either a
@@ -404,9 +518,30 @@ NetworkSimulator::start(void)
 
 		rv = acceptConnections(&hanClient, &airClient);
 		if(rv == ACCEPT_OK) {
+			/* Reset error count. */
+			errCount = 0;
 			//TODO: Create Client socket and associate with medium
+			if (hanClient != -1) {
+				HanaduDeviceNode * node = new HanaduDeviceNode(hanClient);
+				node->registration();
+			}
+			if (airClient != -1) {
+				WirelessDeviceNode * node = new WirelessDeviceNode(airClient);
+				node->registration();
+
+			}
 
 			//socket_set_close_on_exec(child_ctx->cli_sockfd, true);
+		} else if(rv == ACCEPT_TIMEOUT) {
+			errCount = 0;
+
+		} else if(rv == ACCEPT_ERROR) {
+			errCount++;
+			if (errCount > 5) {
+				delete pimpl->hanServer;
+				delete pimpl->airServer;
+				throw "Fatal error in acceptConnections";
+			}
 		}
 	} while (!pimpl->stop && rv != ACCEPT_UNBLOCK);
 
@@ -423,7 +558,7 @@ NetworkSimulator::stop(void) {
 	//pimpl->mediums[1]->stopPacketArbitrator();
 	pimpl->stop = true;
 	//TODO: Unblock accept connections.
-	pimpl->unblocker->unblock();
+	NetworkSimulator::getUnblocker().unblock();
 }
 
 int
@@ -452,7 +587,7 @@ NetworkSimulator::setupAcceptFdSet()
 	FD_SET(fd, &pimpl->acceptFdSet);
 
 
-	fd = pimpl->unblocker->getReadPipe();
+	fd = NetworkSimulator::getUnblocker().getReadPipe();
 	if(fd < 0) {
 		xlog(LOG_WARNING, "Invalid unblock read pipe fd (%d)", fd);
 		throw "Invalid Unblocker";
@@ -466,8 +601,7 @@ NetworkSimulator::setupAcceptFdSet()
 
 AcceptStatus
 NetworkSimulator::acceptConnections(int *hanClient, int *airClient) {
-	bool restart = false;
-	AcceptStatus rv;
+	AcceptStatus rv = ACCEPT_OK;
 
 	*hanClient = -1;
 	*airClient = -1;
@@ -475,7 +609,6 @@ NetworkSimulator::acceptConnections(int *hanClient, int *airClient) {
 		int fdmax;
 		int count;
 
-		restart = false;
 		/*
 		* Setup the Read file descriptor set which consists of Hanadu,
 		* Wireless and the Unblocker file descriptors.
@@ -500,12 +633,12 @@ NetworkSimulator::acceptConnections(int *hanClient, int *airClient) {
 					/* Select system call was interrupted by a signal so restart
 					 * the system call */
 					xlog(LOG_WARNING, "Select system call interrupted, restarting");
-					restart = true;
 					continue;
 				}
 				xlog(LOG_ERR, "select failed (%s)", strerror(errno));
 				rv = ACCEPT_ERROR;
 			} else if(count == 0) {
+				/* This shouldn't happen */
 				xlog(LOG_ERR, "select timedout");
 				rv = ACCEPT_TIMEOUT;
 			} else {
@@ -545,14 +678,14 @@ NetworkSimulator::acceptConnections(int *hanClient, int *airClient) {
 					count--;
 				}
 
-				if(FD_ISSET(pimpl->unblocker->getReadPipe(),
+				if(FD_ISSET(NetworkSimulator::getUnblocker().getReadPipe(),
 						&pimpl->acceptFdSet)
 				) {
 					char buf[1];
 					/* Task has been closed, read byte from pipe and set state to closing. */
 					xlog(LOG_INFO, " Listen has been unblocked.");
 
-					if(read(pimpl->unblocker->getReadPipe(), buf, 1) != 1) {
+					if(read(NetworkSimulator::getUnblocker().getReadPipe(), buf, 1) != 1) {
 						xlog(LOG_ERR, "Failed to read unblock pipe.");
 					}
 					xlog(LOG_INFO, "Unblock pipe flushed.");
@@ -587,7 +720,7 @@ NetworkSimulator::acceptConnections(int *hanClient, int *airClient) {
 			xlog(LOG_ERR, "Accept Failure, invalid fdmax value");
 			rv = ACCEPT_ERROR;
 		}
-	} while(restart);
+	} while(0);
 
 	return rv;
 

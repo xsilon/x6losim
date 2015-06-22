@@ -57,6 +57,10 @@ private:
 
 	void
 	interval(long nanoseconds);
+
+	/* Disable copy constructor and assigned operator */
+	PhysicalMedium(PhysicalMedium const&) = delete;
+	void operator=(PhysicalMedium const&) = delete;
 };
 
 class PowerlineMedium : public PhysicalMedium
@@ -79,6 +83,43 @@ public:
 	}
 };
 
+class DeviceNode_pimpl;
+class DeviceNode
+{
+public:
+	DeviceNode(int sockfd);
+	virtual ~DeviceNode();
+
+	void registration();
+
+private:
+	DeviceNode_pimpl * pimpl;
+
+	/* Disable copy constructor and assigned operator */
+	DeviceNode(DeviceNode const&) = delete;
+	void operator=(DeviceNode const&) = delete;
+};
+
+class HanaduDeviceNode_pimpl;
+class HanaduDeviceNode : public DeviceNode
+{
+public:
+	HanaduDeviceNode(int sockfd);
+	virtual ~HanaduDeviceNode();
+private:
+	HanaduDeviceNode_pimpl *pimpl;
+};
+
+class WirelessDeviceNode_pimpl;
+class WirelessDeviceNode : public DeviceNode
+{
+public:
+	WirelessDeviceNode(int sockfd);
+	virtual ~WirelessDeviceNode();
+private:
+	WirelessDeviceNode_pimpl *pimpl;
+};
+
 enum AcceptStatus
 {
 	ACCEPT_UNBLOCK = 1,
@@ -87,6 +128,7 @@ enum AcceptStatus
 	ACCEPT_ERROR = -2
 };
 
+class SocketUnblocker;
 class NetworkSimulator_pimpl;
 class NetworkSimulator
 {
@@ -97,9 +139,14 @@ public:
 	void interval(long nanoseconds);
 	void start(void);
 	void stop(void);
+	static SocketUnblocker& getUnblocker();
 
 private:
 	NetworkSimulator_pimpl * pimpl;
+
+	/* Disable copy constructor and assigned operator */
+	NetworkSimulator(NetworkSimulator const&) = delete;
+	void operator=(NetworkSimulator const&) = delete;
 
 	AcceptStatus
 	acceptConnections(int *hanClient, int *airClient);
