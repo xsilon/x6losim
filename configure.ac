@@ -8,13 +8,13 @@ AC_CANONICAL_SYSTEM
 AM_INIT_AUTOMAKE([subdir-objects])
 
 AC_PROG_CXX
+AC_PROG_CC
 
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [
   AC_MSG_ERROR([unable to find the pthread lib])
 ])
 AC_CHECK_HEADER([pthread.h])
 
-
-AC_CONFIG_FILES(Makefile src/Makefile)
+AC_CONFIG_FILES(Makefile src/Makefile test/Makefile)
 AC_OUTPUT
 

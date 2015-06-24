@@ -149,11 +149,9 @@ public:
 	Socket_pimpl()
 	{
 		fd = -1;
-		domain = AF_UNSPEC;
 		FD_ZERO(&readFdSet);
 	}
 	int fd;
-	int domain;
 	fd_set readFdSet;
 };
 

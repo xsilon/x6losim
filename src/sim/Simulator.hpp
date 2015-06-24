@@ -24,65 +24,14 @@ private:
 
 typedef std::list<NetSimPacket *> NetSimPktList;
 
-class PacketArbitrator_pimpl;
-class PacketArbitrator
-{
-public:
-	PacketArbitrator(const char * name, int port);
-	virtual ~PacketArbitrator();
+// _________________________________________________________ Device Node classes
 
-	int start();
-	void *run();
-
-	// This will get the current pkt list that has been filled and switch t
-	void getCapturedPackets(NetSimPktList &pktList);
-private:
-	static void *run_helper(void * thisarg) {
-		return ((PacketArbitrator *)thisarg)->run();
-	}
-	PacketArbitrator_pimpl * pimpl;
+enum DeviceNodeState {
+	DEV_NODE_STATE_UNREG = 0,
+	DEV_NODE_STATE_REGISTERING ,
+	DEV_NODE_STATE_ACTIVE,
+	DEV_NODE_STATE_TX
 };
-
-class PhysicalMedium_pimpl;
-class PhysicalMedium
-{
-public:
-	PhysicalMedium(const char * name, int port, clockid_t clockidToUse);
-	virtual ~PhysicalMedium();
-	void startPacketArbitrator();
-
-	void *run();
-private:
-	PhysicalMedium_pimpl * pimpl;
-
-	void
-	interval(long nanoseconds);
-
-	/* Disable copy constructor and assigned operator */
-	PhysicalMedium(PhysicalMedium const&) = delete;
-	void operator=(PhysicalMedium const&) = delete;
-};
-
-class PowerlineMedium : public PhysicalMedium
-{
-public:
-	PowerlineMedium(int port, clockid_t clockidToUse) :
-		PhysicalMedium("PLC", port, clockidToUse)
-	{
-
-	}
-};
-
-class WirelessMedium : public PhysicalMedium
-{
-public:
-	WirelessMedium(int port, clockid_t clockidToUse) :
-		PhysicalMedium("AIR", port, clockidToUse)
-	{
-
-	}
-};
-
 class DeviceNode_pimpl;
 class DeviceNode
 {
@@ -90,7 +39,12 @@ public:
 	DeviceNode(int sockfd);
 	virtual ~DeviceNode();
 
-	void registration();
+	uint64_t getNodeId();
+	int getSocketFd();
+	DeviceNodeState getState();
+
+	bool sendRegistrationRequest();
+	bool registrationTimeout();
 
 private:
 	DeviceNode_pimpl * pimpl;
@@ -120,6 +74,95 @@ private:
 	WirelessDeviceNode_pimpl *pimpl;
 };
 
+
+
+class PacketArbitrator_pimpl;
+class PacketArbitrator
+{
+public:
+	PacketArbitrator(const char * name, int port);
+	virtual ~PacketArbitrator();
+
+	int start();
+	void *run();
+
+	// This will get the current pkt list that has been filled and switch t
+	void getCapturedPackets(NetSimPktList &pktList);
+private:
+	static void *run_helper(void * thisarg) {
+		return ((PacketArbitrator *)thisarg)->run();
+	}
+	PacketArbitrator_pimpl * pimpl;
+};
+
+
+
+// _____________________________________________________ Physical Medium classes
+
+class PhysicalMedium_pimpl;
+class PhysicalMedium
+{
+public:
+	PhysicalMedium(const char * name, int port, clockid_t clockidToUse);
+	virtual ~PhysicalMedium();
+	void startPacketArbitrator();
+
+	int start();
+	void stop();
+	void waitForExit();
+
+protected:
+	void addNode(DeviceNode *node);
+	void removeNode(DeviceNode *node);
+
+private:
+	PhysicalMedium_pimpl * pimpl;
+
+	void processPollerEvents(int numEvents);
+	void checkNodeRegistrationTimeout();
+
+	void interval(int waitms);
+	void * run();
+
+	/* Disable copy constructor and assigned operator */
+	PhysicalMedium(PhysicalMedium const&) = delete;
+	void operator=(PhysicalMedium const&) = delete;
+
+	static void *run_helper(void * thisarg) {
+		return ((PhysicalMedium *)thisarg)->run();
+	}
+};
+
+class PowerlineMedium : public PhysicalMedium
+{
+public:
+	PowerlineMedium(int port, clockid_t clockidToUse) :
+		PhysicalMedium("PLC", port, clockidToUse)
+	{
+
+	}
+
+	void addNode(HanaduDeviceNode *node);
+	void removeNode(HanaduDeviceNode *node);
+
+};
+
+class WirelessMedium : public PhysicalMedium
+{
+public:
+	WirelessMedium(int port, clockid_t clockidToUse) :
+		PhysicalMedium("AIR", port, clockidToUse)
+	{
+
+	}
+
+	void addNode(WirelessDeviceNode *node);
+	void removeNode(WirelessDeviceNode *node);
+};
+
+
+// ___________________________________________________ Network Simulator classes
+
 enum AcceptStatus
 {
 	ACCEPT_UNBLOCK = 1,
@@ -136,10 +179,11 @@ public:
 	NetworkSimulator(bool debug = false);
 	virtual ~NetworkSimulator();
 
-	void interval(long nanoseconds);
 	void start(void);
 	void stop(void);
 	static SocketUnblocker& getUnblocker();
+	static clockid_t getClockId();
+
 
 private:
 	NetworkSimulator_pimpl * pimpl;

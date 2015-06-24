@@ -25,23 +25,26 @@
 #define HANADU_NODE_PORT				(11555)
 #define WIRELESS_NODE_PORT				(11556)
 
-struct node_to_netsim_pkt_hdr
+enum msg_type
 {
-	uint32_t len;
+	MSG_TYPE_REG_REQ = 0,
+	MSG_TYPE_REG_CON,
+	MSG_TYPE_DEREG_REQ,
+	MSG_TYPE_DEREG_CON,
+	MSG_TYPE_CCA_REQ,
+	MSG_TYPE_CCA_CON
+};
+
+struct netsim_pkt_hdr
+{
+	uint16_t len;
+	uint16_t msg_type;
 	/* Used to check NetSim and Node are using the same structure */
 	uint32_t interface_version;
+	/* For initial request this contains the assigned node id */
 	uint64_t node_id;
 
 } __attribute__((__packed__ ));
-
-struct netsim_to_node_pkt_hdr
-{
-	uint32_t len;
-	/* Used to check NetSim and Node are using the same structure */
-	uint32_t interface_version;
-	/* For initial request this contain the assigned node id */
-	uint64_t node_id;
-};
 
 /*
  * NetSim -> Node Registration Request
@@ -52,7 +55,7 @@ struct netsim_to_node_pkt_hdr
  */
 struct netsim_to_node_registration_req_pkt
 {
-	netsim_to_node_pkt_hdr hdr;
+	struct netsim_pkt_hdr hdr;
 } __attribute__((__packed__ ));
 
 
@@ -64,7 +67,7 @@ struct netsim_to_node_registration_req_pkt
  */
 struct node_to_netsim_registration_con_pkt
 {
-	node_to_netsim_pkt_hdr hdr;
+	struct netsim_pkt_hdr hdr;
 
 	char os[32];
 	char os_version[32];
@@ -80,7 +83,7 @@ struct node_to_netsim_data_pkt_hdr
 	union
 	{
 		struct {
-			struct node_to_netsim_pkt_hdr hdr;
+			struct netsim_pkt_hdr hdr;
 
 			uint8_t source_addr[8];
 			uint16_t psdu_len; /* length of the actual 802.15.4 frame after this hdr */
