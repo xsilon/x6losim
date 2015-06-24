@@ -54,6 +54,7 @@ public:
 		 * Set signo to SIGSTOP to make the received signal obvious but
 		 * harmless.
 		 */
+		memset(&sev, 0, sizeof(sev));
 		sev.sigev_notify = SIGEV_NONE;
 		sev.sigev_signo = SIGSTOP;
 		if (timer_create(clockidToUse, &sev, &timer) == -1) {
@@ -66,6 +67,7 @@ public:
 	{
 		close(poller.epfd);
 		timer_delete(timer);
+		free(name);
 	}
 	enum PhysicalMediumState state;
 	clockid_t clockidToUse;
@@ -605,6 +607,7 @@ public:
 		 * Set signo to SIGSTOP to make the received signal obvious but
 		 * harmless.
 		 */
+		memset(&regTimerSigEvent, 0, sizeof(regTimerSigEvent));
 		regTimerSigEvent.sigev_notify = SIGEV_NONE;
 		regTimerSigEvent.sigev_signo = SIGSTOP;
 	}

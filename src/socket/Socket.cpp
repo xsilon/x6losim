@@ -27,6 +27,8 @@ SocketUnblocker::SocketUnblocker() {
 }
 
 SocketUnblocker::~SocketUnblocker() {
+	if (pimpl)
+		delete pimpl;
 }
 
 void
