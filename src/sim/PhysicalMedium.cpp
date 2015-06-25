@@ -8,6 +8,7 @@
 #include <time.h>
 #include <signal.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/epoll.h>
 
 #include <unordered_map>
@@ -181,12 +182,21 @@ class PhysicalMedium_pimpl {
 public:
 	PhysicalMedium_pimpl(clockid_t clockidToUse, const char * nameIn) : clockidToUse(clockidToUse)
 	{
+		struct epoll_event ev;
+		int rv;
+
+		ev.events = EPOLLIN;
+		ev.data.ptr = &NetworkSimulator::getUnblocker();
+
 		state = STOPPED;
 		name = strdup(nameIn);
 		poller.epfd = epoll_create1(EPOLL_CLOEXEC);
 		thread = -1;
 		if (poller.epfd < 0)
 			throw "epoll_create error";
+		rv = epoll_ctl(poller.epfd, EPOLL_CTL_ADD, NetworkSimulator::getUnblocker().getReadPipe(), &ev);
+		if (rv < 0)
+			throw "PhysicalMedium_pimpl: failed to add unblocker to poller";
 		/*
 		 * SIGEV_NONE is supposed to prevent signal delivery, but it doesn't.
 		 * Set signo to SIGSTOP to make the received signal obvious but
@@ -198,7 +208,7 @@ public:
 		if (timer_create(clockidToUse, &sev, &timer) == -1) {
 			xlog(LOG_ERR, "timer_create fail (%d:%s)", errno,
 					strerror(errno));
-			throw "PhysicalMedium::interval: failed to create timer";
+			throw "PhysicalMedium_pimpl: failed to create timer";
 		}
 	}
 	~PhysicalMedium_pimpl()
@@ -236,10 +246,12 @@ PhysicalMedium::~PhysicalMedium() {
 		delete pimpl;
 }
 
+#if 0
 void PhysicalMedium::startPacketArbitrator()
 {
 //	pktArbitrator->start();
 }
+#endif
 
 void PhysicalMedium::addNode(DeviceNode* node)
 {
@@ -249,13 +261,13 @@ void PhysicalMedium::addNode(DeviceNode* node)
 	xlog(LOG_DEBUG, "%s: Adding Node ID (0x%016llx) to registration list",
 		pimpl->name, node->getNodeId());
 	ev.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
-	ev.data.fd = node->getSocketFd();
+	ev.data.ptr = node;
 
 	/* epoll is thread safe so we can add the new node's socket fd to the
 	 * interest list and not upset the epoll_wait that the main thread
 	 * of this class may be calling.
 	 */
-	rv = epoll_ctl(pimpl->poller.epfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
+	rv = epoll_ctl(pimpl->poller.epfd, EPOLL_CTL_ADD, node->getSocketFd(), &ev);
 	if (rv < 0) {
 		if (rv == EEXIST) {
 			// already registered
@@ -267,12 +279,32 @@ void PhysicalMedium::addNode(DeviceNode* node)
 	pimpl->unregListMutex.lock();
 	pimpl->unregList.push_back(node);
 	pimpl->unregListMutex.unlock();
-	//TODO: Move to the part where the node is registered.
-	pimpl->nodeHashMap.insert(std::make_pair(node->getNodeId(), node));
 }
 
-void PhysicalMedium::removeNode(DeviceNode* node)
+void
+PhysicalMedium::removeNode(DeviceNode* nodeToRemove)
 {
+	std::list<DeviceNode *>::iterator iter;
+
+	/* Iterate through unreg list and remove and delete all nodes that
+	 * have timedout. */
+	pimpl->unregListMutex.lock();
+	iter = pimpl->unregList.begin();
+	while (iter != pimpl->unregList.end()) {
+		DeviceNode *node = *iter;
+
+		if (node == nodeToRemove) {
+			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
+					pimpl->name, node->getNodeId());
+			pimpl->unregList.erase(iter++);
+			/* This will delete timer and close socket */
+			delete node;
+		} else {
+			iter++;
+		}
+
+	}
+	pimpl->unregListMutex.unlock();
 
 }
 
@@ -335,7 +367,37 @@ PhysicalMedium::processPollerEvents(int numEvents)
 
 	evp = pimpl->poller.events;
 	for (i = 0; i < numEvents; i++) {
+		/* Check for socket close first */
+		if (evp->events & EPOLLRDHUP) {
+			/* Closed socket */
+			if (evp->data.ptr == &NetworkSimulator::getUnblocker()) {
+				xlog(LOG_NOTICE, "%s: Unblocker close detected", pimpl->name);
+				pimpl->state = STOPPING;
+				break;
+			} else {
+				if (DeviceNode *node = static_cast<DeviceNode *>(evp->data.ptr)) {
+					xlog(LOG_NOTICE, "Client closed (%d)", node->getSocketFd());
+					/* Remove from unregList or nodeMap */
+					removeNode(node);
+					continue;
+				} else {
+					throw "Poller: Not a Device node";
+				}
+			}
+		}
+		if (evp->events & EPOLLIN) {
+			/* Msg to read or unblocker */
+			if (evp->data.ptr == &NetworkSimulator::getUnblocker()) {
+				xlog(LOG_NOTICE, "%s: Unblock detected", pimpl->name);
+				pimpl->state = STOPPING;
+				break;
+			}
+			xlog(LOG_NOTICE, "%s: Read detected", pimpl->name);
+		}
 
+		if (evp->events & (EPOLLERR | EPOLLHUP)) {
+			/* epoll error */
+		}
 		evp++;
 	}
 }
@@ -353,7 +415,7 @@ PhysicalMedium::checkNodeRegistrationTimeout()
 
 		assert(node->getState() == DEV_NODE_STATE_REGISTERING);
 		if (node->registrationTimeout()) {
-			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) to registration list",
+			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
 					pimpl->name, node->getNodeId());
 			pimpl->unregList.erase(iter++);
 			/* This will delete timer and close socket */
@@ -402,6 +464,9 @@ PhysicalMedium::interval(int waitms)
 			//rv is 0 or number of file descriptors to process.
 			if (rv) {
 				processPollerEvents(rv);
+				/* may set state to STOPPING */
+				if (pimpl->state == STOPPING)
+					break;
 			}
 		}
 
@@ -445,6 +510,8 @@ void *PhysicalMedium::run() {
 	do {
 		if (pimpl->state == IDLE) {
 			interval(1000);
+			if(pimpl->state == STOPPING)
+				break;
 		}
 		/* Check for nodes that have expired registration period */
 		checkNodeRegistrationTimeout();
@@ -462,6 +529,14 @@ void PhysicalMedium::stop()
 
 #if 0
 void
+void
+PhysicalMedium::handleRegistrationConfirm()
+{
+	//TODO: Move to the part where the node is registered.
+	pimpl->nodeHashMap.insert(std::make_pair(node->getNodeId(), node));
+
+}
+
 processRegistrationConfirmation()
 {
 	SocketReadStatus readStatus;

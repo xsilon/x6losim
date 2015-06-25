@@ -97,6 +97,7 @@ DeviceNode::sendRegistrationRequest()
 	reply =  (node_to_netsim_registration_con_pkt *)malloc(replyMsgLen);
 
 	msg->hdr.len = sizeof(*msg);
+	msg->hdr.msg_type = MSG_TYPE_REG_REQ;
 	msg->hdr.interface_version = NETSIM_INTERFACE_VERSION;
 	/* We'll use the virtual address of the socket instance pointer as this
 	 * is always guaranteed to be unique for each DeviceNode instance. */
