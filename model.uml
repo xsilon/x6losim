@@ -1,15 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:uml="http://www.eclipse.org/uml2/5.0.0/UML" xmi:id="_nVjLEBUFEeWuvfbxuHWSXQ" name="model">
   <packagedElement xmi:type="uml:Class" xmi:id="_tlqeQBUFEeWuvfbxuHWSXQ" name="NetworkSimulator">
-    <ownedAttribute xmi:type="uml:Property" xmi:id="_lXr4gBW7EeWQMZsnnZ3B6g" name="powerlineMedium" type="_3RgRcBUFEeWuvfbxuHWSXQ" aggregation="composite" association="_lXsfkBW7EeWQMZsnnZ3B6g">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_lXr4gBW7EeWQMZsnnZ3B6g" name="plcMedium" type="_3RgRcBUFEeWuvfbxuHWSXQ" aggregation="composite" association="_lXsfkBW7EeWQMZsnnZ3B6g">
       <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_lXr4gRW7EeWQMZsnnZ3B6g" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_lXr4ghW7EeWQMZsnnZ3B6g" value="1"/>
     </ownedAttribute>
-    <ownedAttribute xmi:type="uml:Property" xmi:id="_ltvBABW7EeWQMZsnnZ3B6g" name="wirelessMedium" type="_4tcD8BUFEeWuvfbxuHWSXQ" aggregation="composite" association="_ltvoEBW7EeWQMZsnnZ3B6g">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_ltvBABW7EeWQMZsnnZ3B6g" name="wlMedium" type="_4tcD8BUFEeWuvfbxuHWSXQ" aggregation="composite" association="_ltvoEBW7EeWQMZsnnZ3B6g">
       <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_ltvBARW7EeWQMZsnnZ3B6g" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_ltvBAhW7EeWQMZsnnZ3B6g" value="1"/>
     </ownedAttribute>
     <ownedOperation xmi:type="uml:Operation" xmi:id="_rN110BUGEeWuvfbxuHWSXQ" name="start"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_8mlJIBsuEeWPq9in8tgSYg" name="stop"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_-yMsIBsuEeWPq9in8tgSYg" name="getUnblocker" isStatic="true"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_CgwokBsvEeWPq9in8tgSYg" name="getClockId" isStatic="true"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_ICeksBsvEeWPq9in8tgSYg" name="acceptConnections" visibility="private"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_LCUZ8BsvEeWPq9in8tgSYg" name="setupAcceptFdSet" visibility="private"/>
   </packagedElement>
   <packagedElement xmi:type="uml:Class" xmi:id="_w9RTQBUFEeWuvfbxuHWSXQ" name="NetSimPacket">
     <ownedAttribute xmi:type="uml:Property" xmi:id="_Fk1-wBUHEeWuvfbxuHWSXQ" name="pktBuffer" visibility="private">
@@ -19,12 +24,25 @@
     </ownedAttribute>
   </packagedElement>
   <packagedElement xmi:type="uml:Class" xmi:id="_zFargBUFEeWuvfbxuHWSXQ" name="PacketArbitrator"/>
-  <packagedElement xmi:type="uml:Class" xmi:id="_1x6G8BUFEeWuvfbxuHWSXQ" name="PhysicalMedium"/>
+  <packagedElement xmi:type="uml:Class" xmi:id="_1x6G8BUFEeWuvfbxuHWSXQ" name="PhysicalMedium">
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_cx4zABsvEeWPq9in8tgSYg" name="addNode"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_gX3bMBsvEeWPq9in8tgSYg" name="removeNode"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_pwc7MBsvEeWPq9in8tgSYg" name="start"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_Q90SkBswEeWPq9in8tgSYg" name="stop"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_SUwQUBswEeWPq9in8tgSYg" name="run"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_iPMwQBsvEeWPq9in8tgSYg" name="processPollerEvents" visibility="private"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_k04ZEBsvEeWPq9in8tgSYg" name="checkNodeRegistrationTimeout" visibility="private"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_nCsUcBsvEeWPq9in8tgSYg" name="interval" visibility="private"/>
+  </packagedElement>
   <packagedElement xmi:type="uml:Class" xmi:id="_3RgRcBUFEeWuvfbxuHWSXQ" name="PowerlineMedium">
     <generalization xmi:type="uml:Generalization" xmi:id="_i8H3QBUGEeWuvfbxuHWSXQ" general="_1x6G8BUFEeWuvfbxuHWSXQ"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_bmZ3UBsvEeWPq9in8tgSYg" name="addNode"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_fTi3cBsvEeWPq9in8tgSYg" name="removeNode"/>
   </packagedElement>
   <packagedElement xmi:type="uml:Class" xmi:id="_4tcD8BUFEeWuvfbxuHWSXQ" name="WirelessMedium">
     <generalization xmi:type="uml:Generalization" xmi:id="_kDThwBUGEeWuvfbxuHWSXQ" general="_1x6G8BUFEeWuvfbxuHWSXQ"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_cD_LMBsvEeWPq9in8tgSYg" name="addNode"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_f1XLEBsvEeWPq9in8tgSYg" name="removeNode"/>
   </packagedElement>
   <packagedElement xmi:type="uml:Association" xmi:id="_-0pSwBUFEeWuvfbxuHWSXQ" visibility="private" memberEnd="_-0pSwRUFEeWuvfbxuHWSXQ _-0hW8BUFEeWuvfbxuHWSXQ" navigableOwnedEnd="_-0hW8BUFEeWuvfbxuHWSXQ">
     <name xsi:nil="true"/>
@@ -50,15 +68,14 @@
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_3jxdMxW1EeWQMZsnnZ3B6g" value="1"/>
     </ownedEnd>
   </packagedElement>
-  <packagedElement xmi:type="uml:Association" xmi:id="_lXsfkBW7EeWQMZsnnZ3B6g" memberEnd="_lXsfkRW7EeWQMZsnnZ3B6g _lXr4gBW7EeWQMZsnnZ3B6g">
+  <packagedElement xmi:type="uml:Association" xmi:id="_lXsfkBW7EeWQMZsnnZ3B6g" visibility="private" memberEnd="_lXsfkRW7EeWQMZsnnZ3B6g _lXr4gBW7EeWQMZsnnZ3B6g">
     <name xsi:nil="true"/>
     <ownedEnd xmi:type="uml:Property" xmi:id="_lXsfkRW7EeWQMZsnnZ3B6g" type="_tlqeQBUFEeWuvfbxuHWSXQ" association="_lXsfkBW7EeWQMZsnnZ3B6g">
       <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_lXsfkhW7EeWQMZsnnZ3B6g" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_lXsfkxW7EeWQMZsnnZ3B6g" value="1"/>
     </ownedEnd>
   </packagedElement>
-  <packagedElement xmi:type="uml:Association" xmi:id="_ltvoEBW7EeWQMZsnnZ3B6g" memberEnd="_ltvoERW7EeWQMZsnnZ3B6g _ltvBABW7EeWQMZsnnZ3B6g">
-    <name xsi:nil="true"/>
+  <packagedElement xmi:type="uml:Association" xmi:id="_ltvoEBW7EeWQMZsnnZ3B6g" visibility="private" memberEnd="_ltvoERW7EeWQMZsnnZ3B6g _ltvBABW7EeWQMZsnnZ3B6g">
     <ownedEnd xmi:type="uml:Property" xmi:id="_ltvoERW7EeWQMZsnnZ3B6g" type="_tlqeQBUFEeWuvfbxuHWSXQ" association="_ltvoEBW7EeWQMZsnnZ3B6g">
       <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_ltvoEhW7EeWQMZsnnZ3B6g" value="1"/>
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_ltvoExW7EeWQMZsnnZ3B6g" value="1"/>
@@ -175,7 +192,7 @@ DST SA === MAC SA</body>
       <transition xmi:type="uml:Transition" xmi:id="_4jYEUBZKEeWQMZsnnZ3B6g" name="Filter Reject" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_-UMuQBZcEeWQMZsnnZ3B6g" name="mac bypassed" source="_lKYqEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
       <subvertex xmi:type="uml:Pseudostate" xmi:id="_i34jUBW9EeWQMZsnnZ3B6g" name="start"/>
-      <subvertex xmi:type="uml:State" xmi:id="_jjXJQBW9EeWQMZsnnZ3B6g" name="Idle"/>
+      <subvertex xmi:type="uml:State" xmi:id="_jjXJQBW9EeWQMZsnnZ3B6g" name="Phys Medium Idle"/>
       <subvertex xmi:type="uml:State" xmi:id="_lfdCgBW9EeWQMZsnnZ3B6g" name="Packet Transmit"/>
       <subvertex xmi:type="uml:Pseudostate" xmi:id="_kzf0EBXAEeWQMZsnnZ3B6g" name="Initial1"/>
       <subvertex xmi:type="uml:State" xmi:id="_lKYqEBXAEeWQMZsnnZ3B6g" name="Idle"/>

@@ -39,6 +39,7 @@ enum DeviceNodeState {
 	DEV_NODE_STATE_ACTIVE,
 	DEV_NODE_STATE_TX
 };
+
 class DeviceNode_pimpl;
 class DeviceNode
 {
@@ -49,6 +50,8 @@ public:
 	uint64_t getNodeId();
 	int getSocketFd();
 	DeviceNodeState getState();
+
+	void readMsg();
 
 	bool sendRegistrationRequest();
 	bool registrationTimeout();

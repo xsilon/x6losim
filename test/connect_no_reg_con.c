@@ -1,12 +1,69 @@
 #include "x6losim_interface.h"
 
 #include <stdlib.h>
+#include <byteswap.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+
+
+#ifndef ntohll
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+static inline uint64_t ntohll(uint64_t x) {
+	return bswap_64(x);
+}
+#elif __BYTE_ORDER == __BIG_ENDIAN
+static inline uint64_t ntohll(uint64_t x)
+{
+	return x;
+}
+#endif
+#endif
+#ifndef htonll
+#define htonll ntohll
+#endif
+
+uint16_t
+generate_checksum(void *msg, int msglen)
+{
+	int cksum = 0;
+	uint16_t *p = (uint16_t *)msg;
+
+	while (msglen > 1) {
+		cksum += *p++;
+		msglen -= 2;
+	}
+	if (msglen == 1)
+		cksum += htons(*(unsigned char *)p << 8);
+
+	cksum = (cksum >> 16) + (cksum & 0xffff);
+	cksum += (cksum >> 16);
+	return (~(uint16_t)cksum);
+}
+
+
+void
+send_reg_confirm(int sockfd, uint64_t nodeId)
+{
+	struct node_to_netsim_registration_con_pkt reg_con;
+
+	reg_con.hdr.len = htons(sizeof(reg_con));
+	reg_con.hdr.msg_type = htons(MSG_TYPE_REG_CON);
+	reg_con.hdr.interface_version = htonl(NETSIM_INTERFACE_VERSION);
+	reg_con.hdr.node_id = htonll(nodeId);
+	reg_con.hdr.cksum = 0;
+	memset(reg_con.os, 0, sizeof(reg_con.os));
+	memset(reg_con.os_version, 0, sizeof(reg_con.os_version));
+	strcpy(reg_con.os, "linux");
+	strcpy(reg_con.os_version, "4.1.0 rc4");
+	reg_con.hdr.cksum = htons(generate_checksum(&reg_con, sizeof(reg_con)));
+
+	send(sockfd, &reg_con, sizeof(reg_con), MSG_NOSIGNAL);
+}
+
 
 int
 main()
@@ -44,6 +101,8 @@ main()
 	printf("Msg Type : %u\n", hdr->msg_type);
 	printf("Interface: 0x%08x\n", hdr->interface_version);
 	printf("Node ID  : 0x%016llx\n",(long long unsigned int) hdr->node_id);
+
+	send_reg_confirm(sockfd, ntohll(hdr->node_id));
 
 	sleep (3);
 

@@ -260,7 +260,7 @@ void PhysicalMedium::addNode(DeviceNode* node)
 
 	xlog(LOG_DEBUG, "%s: Adding Node ID (0x%016llx) to registration list",
 		pimpl->name, node->getNodeId());
-	ev.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
+	ev.events = EPOLLIN | EPOLLRDHUP;
 	ev.data.ptr = node;
 
 	/* epoll is thread safe so we can add the new node's socket fd to the
@@ -381,7 +381,7 @@ PhysicalMedium::processPollerEvents(int numEvents)
 					removeNode(node);
 					continue;
 				} else {
-					throw "Poller: Not a Device node";
+					throw "Poller EPOLLRDHUP: Not a Device node";
 				}
 			}
 		}
@@ -391,10 +391,15 @@ PhysicalMedium::processPollerEvents(int numEvents)
 				xlog(LOG_NOTICE, "%s: Unblock detected", pimpl->name);
 				pimpl->state = STOPPING;
 				break;
+			} else {
+				if (DeviceNode *node = static_cast<DeviceNode *>(evp->data.ptr)) {
+					node->readMsg();
+				} else {
+					throw "Poller EPOLLIN: Not a Device node";
+				}
 			}
 			xlog(LOG_NOTICE, "%s: Read detected", pimpl->name);
 		}
-
 		if (evp->events & (EPOLLERR | EPOLLHUP)) {
 			/* epoll error */
 		}

@@ -59,7 +59,6 @@ NetworkSimulator::NetworkSimulator(bool debug)
 		throw "Failed to get high resolution clock";
 	}
 
-
 	pimpl->plcMedium->start();
 	pimpl->wlMedium->start();
 }

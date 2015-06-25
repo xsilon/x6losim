@@ -319,7 +319,7 @@ Socket::recvReply(char * replyMsgBuf, int replyMsgLen, int msTimeout,
 					count--;
 				}
 				if(unblocker && FD_ISSET(unblocker->getReadPipe(),
-						    &pimpl->readFdSet)
+							 &pimpl->readFdSet)
 				) {
 					char buf[1];
 					/* Task has been closed, read byte from pipe and set state to closing. */

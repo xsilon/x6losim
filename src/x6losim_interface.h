@@ -37,13 +37,16 @@ enum msg_type
 
 struct netsim_pkt_hdr
 {
+	/* Includes size of this header */
 	uint16_t len;
+	/* One of the enum msg_type values */
 	uint16_t msg_type;
 	/* Used to check NetSim and Node are using the same structure */
 	uint32_t interface_version;
 	/* For initial request this contains the assigned node id */
 	uint64_t node_id;
-
+	/* 16 bit checksum of complete msg where this field is 0 */
+	uint16_t cksum;
 } __attribute__((__packed__ ));
 
 /*

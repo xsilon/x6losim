@@ -3,9 +3,55 @@
 #include "log/log.hpp"
 
 #include <assert.h>
+#include <byteswap.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+
+/*
+ *  Our algorithm is simple, using a 32 bit accumulator (sum),
+ *  we add sequential 16 bit words to it, and at the end, fold
+ *  back all the carry bits from the top 16 bits into the lower
+ *  16 bits.
+ */
+uint16_t
+generate_checksum(void *msg, int msglen)
+{
+	int cksum = 0;
+	uint16_t *p = (uint16_t *)msg;
+
+	while (msglen > 1) {
+		cksum += *p++;
+		msglen -= 2;
+	}
+	if (msglen == 1)
+		cksum += htons(*(unsigned char *)p << 8);
+
+	cksum = (cksum >> 16) + (cksum & 0xffff);
+	cksum += (cksum >> 16);
+	return (~(uint16_t)cksum);
+}
+
+#ifndef ntohll
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+static inline uint64_t ntohll(uint64_t x) {
+	return bswap_64(x);
+}
+#elif __BYTE_ORDER == __BIG_ENDIAN
+static inline uint64_t ntohll(uint64_t x)
+{
+	return x;
+}
+#endif
+#endif
+#ifndef htonll
+#define htonll ntohll
+#endif
+
 
 // ___________________________________________________ DeviceNode Implementation
 
@@ -24,6 +70,7 @@ public:
 		regTimerSigEvent.sigev_notify = SIGEV_NONE;
 		regTimerSigEvent.sigev_signo = SIGSTOP;
 		regTimer = NULL;
+		memset(&stats, 0, sizeof(stats));
 	}
 	~DeviceNode_pimpl()
 	{
@@ -38,6 +85,10 @@ public:
 
 	struct sigevent regTimerSigEvent;
 	timer_t regTimer;
+
+	struct stats {
+		int failedReads;
+	} stats;
 };
 struct itimerspec DeviceNode_pimpl::regTimerSpec = {
 	.it_interval = {
@@ -79,7 +130,8 @@ DeviceNode::getSocketFd()
 	return (uint64_t)pimpl->sockfd;
 }
 
-DeviceNodeState DeviceNode::getState()
+DeviceNodeState
+DeviceNode::getState()
 {
 	return pimpl->state;
 }
@@ -88,21 +140,19 @@ bool
 DeviceNode::sendRegistrationRequest()
 {
 	struct netsim_to_node_registration_req_pkt * msg;
-	struct node_to_netsim_registration_con_pkt * reply;
 	int msglen = sizeof(*msg);
-	int replyMsgLen = sizeof(*reply);
 	bool success = true;
 
 	msg = (netsim_to_node_registration_req_pkt *)malloc(msglen);
-	reply =  (node_to_netsim_registration_con_pkt *)malloc(replyMsgLen);
 
-	msg->hdr.len = sizeof(*msg);
-	msg->hdr.msg_type = MSG_TYPE_REG_REQ;
-	msg->hdr.interface_version = NETSIM_INTERFACE_VERSION;
+	msg->hdr.len = htons(sizeof(*msg));
+	msg->hdr.msg_type = htons(MSG_TYPE_REG_REQ);
+	msg->hdr.interface_version = htonl(NETSIM_INTERFACE_VERSION);
 	/* We'll use the virtual address of the socket instance pointer as this
 	 * is always guaranteed to be unique for each DeviceNode instance. */
 	assert(pimpl->socket != NULL);
-	msg->hdr.node_id = (uint64_t)pimpl->socket;
+	msg->hdr.node_id = htonll((uint64_t)pimpl->socket);
+	msg->hdr.cksum = htons(generate_checksum(msg, msglen));
 
 	/* Send registration request message, on return the caller will add
 	 * to the relevant physical medium which will then process the
@@ -119,9 +169,90 @@ DeviceNode::sendRegistrationRequest()
 		throw "DeviceNode::sendRegistrationRequest: failed to arm timer";
 
 	free(msg);
-	free(reply);
 
 	return success;
+}
+
+void DeviceNode::readMsg()
+{
+	struct netsim_pkt_hdr hdr;
+	char * msgData = NULL;
+	int rv;
+
+	/* The PhysicalMedium will only ask a device node to read the message
+	 * out if the poller has detected that data is available so we can
+	 * safely call recv here.  The socket is non blocking anyway so we
+	 * can check for EAGAIN which in theory shouldn't happen unless
+	 * we change epoll to edge triggered.
+	 */
+	rv = recv(pimpl->socket->getSockFd(), &hdr, sizeof(hdr), 0);
+	if (rv == EAGAIN) {
+		// shouldn't happen, just log and return.
+		xlog(LOG_WARNING, "DeviceNode::readMsg: EAGAIN");
+		pimpl->stats.failedReads++;
+	} else {
+		uint16_t len;
+		uint16_t msgType;
+		uint32_t interfaceVersion;
+		uint64_t nodeId;
+
+		len = ntohs(hdr.len);
+		msgType = ntohs(hdr.msg_type);
+		interfaceVersion = ntohl(hdr.interface_version);
+		nodeId = ntohll(hdr.node_id);
+
+		assert(rv == sizeof(hdr));
+		assert(len >= sizeof(hdr));
+		assert(nodeId == (uint64_t)pimpl->socket);
+
+		xlog(LOG_INFO, "Msg Len  : %u\n", len);
+		xlog(LOG_INFO, "Msg Type : %u\n", msgType);
+		xlog(LOG_INFO, "Interface: 0x%08x\n", interfaceVersion);
+		xlog(LOG_INFO, "Node ID  : 0x%016llx\n",(long long unsigned int) nodeId);
+
+		if (len > sizeof(hdr)) {
+			len = sizeof(hdr) - len;
+			msgData = (char *)malloc(len);
+			rv = recv(pimpl->socket->getSockFd(), msgData, len, 0);
+			if (rv == EAGAIN) {
+				// shouldn't happen, just log and return.
+				xlog(LOG_WARNING, "DeviceNode::readMsg: EAGAIN");
+				pimpl->stats.failedReads++;
+			}
+		}
+
+		if (interfaceVersion != NETSIM_INTERFACE_VERSION) {
+			xlog(LOG_WARNING, "Invalid Interface version 0x%08x != 0x%08x(received)\n",
+					NETSIM_INTERFACE_VERSION, interfaceVersion);
+			if (msgData)
+				free(msgData);
+
+			return;
+		}
+
+		// TODO: Check checksum
+		switch(ntohs(hdr.msg_type)) {
+		case MSG_TYPE_REG_CON:
+			xlog(LOG_INFO, "MSG_TYPE_REG_CON");
+
+			break;
+		case MSG_TYPE_DEREG_REQ:
+			break;
+		case MSG_TYPE_DEREG_CON:
+			break;
+		case MSG_TYPE_CCA_REQ:
+			break;
+
+		// These aren't supported
+		case MSG_TYPE_REG_REQ:
+		case MSG_TYPE_CCA_CON:
+		default:
+			//Bad msg type
+			xlog(LOG_ERR, "DeviceNode::readMsg: Invalid msgType");
+		}
+
+	}
+
 }
 
 bool
