@@ -7,6 +7,9 @@ x6losim_SOURCES = \
 	main.cpp \
 	log/log.cpp \
 	socket/Socket.cpp \
-	sim/Simulator.cpp
+	sim/Simulator.cpp \
+	sim/PhysicalMedium.cpp \
+	sim/DeviceNode.cpp \
+	utils/time.cpp
 
 

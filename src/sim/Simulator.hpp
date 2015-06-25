@@ -13,6 +13,13 @@
 #include <list>
 #include <time.h>
 
+// _______________________________________________________ Default Configuration
+
+#define EPOLL_MAX_EVENTS		(64)
+#define REGISTRATION_TIME		(5)
+
+// ________________________________________________________________ NetSimPacket
+
 class NetSimPacket
 {
 public:
