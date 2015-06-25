@@ -216,7 +216,37 @@ public:
 		close(poller.epfd);
 		timer_delete(timer);
 		free(name);
+		/* Remove and free nodes from registration list, remembering that
+		 * nodes could potentially be in node hash map so we will only free
+		 * them if they are in the right state */
+		std::list<DeviceNode *>::iterator iter;
+		/* Iterate through unreg list and remove and delete all nodes that
+		 * have timedout.s */
+		unregListMutex.lock();
+		iter = unregList.begin();
+		while (iter != unregList.end()) {
+			DeviceNode *node = *iter;
+
+			iter = unregList.erase(iter);
+			/* This will delete timer and close socket */
+			if (node->getState() == DEV_NODE_STATE_REGISTERING)
+				delete node;
+
+		}
+		unregListMutex.unlock();
+
+		std::unordered_map<uint64_t, DeviceNode *>::iterator iterMap;
+		/* Remove and free nodes from the node hash map */
+		iterMap = nodeHashMap.begin();
+		while (iterMap != nodeHashMap.end()) {
+			std::pair<const long unsigned int, DeviceNode*>item = *iterMap;
+
+			iterMap = nodeHashMap.erase(iterMap);
+			/* This will delete timer and close socket */
+			delete item.second;
+		}
 	}
+
 	enum PhysicalMediumState state;
 	clockid_t clockidToUse;
 	timer_t timer;

@@ -35,7 +35,7 @@ typedef std::list<NetSimPacket *> NetSimPktList;
 
 enum DeviceNodeState {
 	DEV_NODE_STATE_UNREG = 0,
-	DEV_NODE_STATE_REGISTERING ,
+	DEV_NODE_STATE_REGISTERING,
 	DEV_NODE_STATE_ACTIVE,
 	DEV_NODE_STATE_TX
 };
