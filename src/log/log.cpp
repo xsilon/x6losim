@@ -7,7 +7,7 @@
 
 bool log_to_syslog = false;
 int loglevel = LOG_DEBUG;
-pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t log_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 /**
  * @brief Log a debug msg.

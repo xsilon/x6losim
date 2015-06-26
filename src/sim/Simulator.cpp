@@ -136,19 +136,13 @@ NetworkSimulator::start(void)
 			//TODO: Create Client socket and associate with medium
 			if (hanClient != -1) {
 				HanaduDeviceNode * node = new HanaduDeviceNode(hanClient);
-				if (node->sendRegistrationRequest()) {
-					pimpl->plcMedium->addNode(node);
-				} else {
-					delete node;
-				}
+				node->sendRegistrationRequest();
+				pimpl->plcMedium->addNode(node);
 			}
 			if (airClient != -1) {
 				WirelessDeviceNode * node = new WirelessDeviceNode(airClient);
-				if (node->sendRegistrationRequest()) {
-					pimpl->wlMedium->addNode(node);
-				} else {
-					delete node;
-				}
+				node->sendRegistrationRequest();
+				pimpl->wlMedium->addNode(node);
 			}
 
 			//socket_set_close_on_exec(child_ctx->cli_sockfd, true);

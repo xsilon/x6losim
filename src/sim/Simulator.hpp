@@ -37,9 +37,11 @@ enum DeviceNodeState {
 	DEV_NODE_STATE_UNREG = 0,
 	DEV_NODE_STATE_REGISTERING,
 	DEV_NODE_STATE_ACTIVE,
-	DEV_NODE_STATE_TX
+	DEV_NODE_STATE_TX,
+	DEV_NODE_STATE_DEREGISTERING
 };
 
+class PhysicalMedium;
 class DeviceNode_pimpl;
 class DeviceNode
 {
@@ -48,12 +50,17 @@ public:
 	virtual ~DeviceNode();
 
 	uint64_t getNodeId();
+	const char *getName();
 	int getSocketFd();
 	DeviceNodeState getState();
 
-	void readMsg();
+	void readMsg(PhysicalMedium *medium);
 
-	bool sendRegistrationRequest();
+	void sendRegistrationRequest();
+	void sendDeregistrationConfirm();
+
+	void handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCon);
+	void handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq);
 	bool registrationTimeout();
 
 private:
@@ -62,6 +69,9 @@ private:
 	/* Disable copy constructor and assigned operator */
 	DeviceNode(DeviceNode const&) = delete;
 	void operator=(DeviceNode const&) = delete;
+
+	void startRegistrationTimer();
+	void stopRegistrationTimer();
 };
 
 class HanaduDeviceNode_pimpl;
@@ -121,9 +131,11 @@ public:
 	void stop();
 	void waitForExit();
 
+	void registerNode(DeviceNode *node);
+
 protected:
 	void addNode(DeviceNode *node);
-	void removeNode(DeviceNode *node);
+	void deregisterNode(DeviceNode *node);
 
 private:
 	PhysicalMedium_pimpl * pimpl;

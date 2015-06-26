@@ -191,6 +191,20 @@ DST SA === MAC SA</body>
       </transition>
       <transition xmi:type="uml:Transition" xmi:id="_4jYEUBZKEeWQMZsnnZ3B6g" name="Filter Reject" source="_x1nmkBXAEeWQMZsnnZ3B6g" target="_lKYqEBXAEeWQMZsnnZ3B6g"/>
       <transition xmi:type="uml:Transition" xmi:id="_-UMuQBZcEeWQMZsnnZ3B6g" name="mac bypassed" source="_lKYqEBXAEeWQMZsnnZ3B6g" target="_n8dJEBXAEeWQMZsnnZ3B6g"/>
+      <transition xmi:type="uml:Transition" xmi:id="_iliQwBvsEeWPq9in8tgSYg" name="client socket connection accepted" source="_XP9foBvsEeWPq9in8tgSYg" target="_XoU8UBvsEeWPq9in8tgSYg"/>
+      <transition xmi:type="uml:Transition" xmi:id="_HKfbcBvtEeWPq9in8tgSYg" name="sendRegistrationRequest" source="_XoU8UBvsEeWPq9in8tgSYg" target="_bc5aIBvsEeWPq9in8tgSYg"/>
+      <transition xmi:type="uml:Transition" xmi:id="_OHd0oBvtEeWPq9in8tgSYg" name="regTimer expires" source="_bc5aIBvsEeWPq9in8tgSYg" target="_NU9ZoBvtEeWPq9in8tgSYg"/>
+      <transition xmi:type="uml:Transition" xmi:id="_gzgY0Bv0EeWPq9in8tgSYg" name="receivedRegistrationConfirm" source="_bc5aIBvsEeWPq9in8tgSYg" target="_dK1ioBvsEeWPq9in8tgSYg">
+        <effect xmi:type="uml:Activity" xmi:id="_BgqykBv1EeWPq9in8tgSYg" name="stop regTimer"/>
+      </transition>
+      <transition xmi:type="uml:Transition" xmi:id="_hVPM4Bv0EeWPq9in8tgSYg" source="_dK1ioBvsEeWPq9in8tgSYg" target="_exU_UBvsEeWPq9in8tgSYg"/>
+      <transition xmi:type="uml:Transition" xmi:id="_iGN94Bv0EeWPq9in8tgSYg" source="_exU_UBvsEeWPq9in8tgSYg" target="_dK1ioBvsEeWPq9in8tgSYg"/>
+      <transition xmi:type="uml:Transition" xmi:id="_lDu34Bv0EeWPq9in8tgSYg" source="_dK1ioBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg"/>
+      <transition xmi:type="uml:Transition" xmi:id="_lh2-UBv0EeWPq9in8tgSYg" source="_exU_UBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg"/>
+      <transition xmi:type="uml:Transition" xmi:id="_mA_xYBv0EeWPq9in8tgSYg" name="receviedDeregistrationReq" source="_bc5aIBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg">
+        <effect xmi:type="uml:Activity" xmi:id="_EI4yABv1EeWPq9in8tgSYg" name="stop regTimer"/>
+      </transition>
+      <transition xmi:type="uml:Transition" xmi:id="_sSPF8Bv0EeWPq9in8tgSYg" source="_goFsoBvsEeWPq9in8tgSYg" target="_NU9ZoBvtEeWPq9in8tgSYg"/>
       <subvertex xmi:type="uml:Pseudostate" xmi:id="_i34jUBW9EeWQMZsnnZ3B6g" name="start"/>
       <subvertex xmi:type="uml:State" xmi:id="_jjXJQBW9EeWQMZsnnZ3B6g" name="Phys Medium Idle"/>
       <subvertex xmi:type="uml:State" xmi:id="_lfdCgBW9EeWQMZsnnZ3B6g" name="Packet Transmit"/>
@@ -206,6 +220,15 @@ DST SA === MAC SA</body>
         <doActivity xmi:type="uml:Activity" xmi:id="_m6t2cBZIEeWQMZsnnZ3B6g" name="HW Frame Filtering"/>
       </subvertex>
       <subvertex xmi:type="uml:State" xmi:id="_De1jMBXFEeWQMZsnnZ3B6g" name="Idle"/>
+      <subvertex xmi:type="uml:Pseudostate" xmi:id="_XP9foBvsEeWPq9in8tgSYg" name="Initial2"/>
+      <subvertex xmi:type="uml:State" xmi:id="_XoU8UBvsEeWPq9in8tgSYg" name="Unregistered"/>
+      <subvertex xmi:type="uml:State" xmi:id="_bc5aIBvsEeWPq9in8tgSYg" name="Registering">
+        <doActivity xmi:type="uml:Activity" xmi:id="_JzgsIBvtEeWPq9in8tgSYg" name="start regTimer"/>
+      </subvertex>
+      <subvertex xmi:type="uml:State" xmi:id="_dK1ioBvsEeWPq9in8tgSYg" name="Active"/>
+      <subvertex xmi:type="uml:State" xmi:id="_exU_UBvsEeWPq9in8tgSYg" name="Tx"/>
+      <subvertex xmi:type="uml:State" xmi:id="_goFsoBvsEeWPq9in8tgSYg" name="Deregistering"/>
+      <subvertex xmi:type="uml:Pseudostate" xmi:id="_NU9ZoBvtEeWPq9in8tgSYg" name="Close Socket and Destroy Node" kind="terminate"/>
     </region>
   </packagedElement>
   <packagedElement xmi:type="uml:Interaction" xmi:id="_6Bc8IBZbEeWQMZsnnZ3B6g" name="Interaction1">

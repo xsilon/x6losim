@@ -64,6 +64,21 @@ send_reg_confirm(int sockfd, uint64_t nodeId)
 	send(sockfd, &reg_con, sizeof(reg_con), MSG_NOSIGNAL);
 }
 
+void
+send_dereg_req(int sockfd, uint64_t nodeId)
+{
+	struct node_to_netsim_deregistration_req_pkt dereg_req;
+
+	dereg_req.hdr.len = htons(sizeof(dereg_req));
+	dereg_req.hdr.msg_type = htons(MSG_TYPE_DEREG_REQ);
+	dereg_req.hdr.interface_version = htonl(NETSIM_INTERFACE_VERSION);
+	dereg_req.hdr.node_id = htonll(nodeId);
+	dereg_req.hdr.cksum = 0;
+	dereg_req.hdr.cksum = htons(generate_checksum(&dereg_req, sizeof(dereg_req)));
+
+	send(sockfd, &dereg_req, sizeof(dereg_req), MSG_NOSIGNAL);
+}
+
 
 int
 main()
@@ -105,6 +120,17 @@ main()
 	send_reg_confirm(sockfd, ntohll(hdr->node_id));
 
 	sleep (3);
+
+	send_dereg_req(sockfd, ntohll(hdr->node_id));
+	if(recv(sockfd , server_reply , 128 , 0) < 0) {
+		printf("recv failed");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Msg Len  : %u\n", hdr->len);
+	printf("Msg Type : %u\n", hdr->msg_type);
+	printf("Interface: 0x%08x\n", hdr->interface_version);
+	printf("Node ID  : 0x%016llx\n",(long long unsigned int) hdr->node_id);
 
 	close(sockfd);
 

@@ -23,10 +23,11 @@ public:
 
 SocketUnblocker::SocketUnblocker() {
 	pimpl = new SocketUnblocker_impl();
-	this->openPipes();
+	openPipes();
 }
 
 SocketUnblocker::~SocketUnblocker() {
+	closePipes();
 	if (pimpl)
 		delete pimpl;
 }

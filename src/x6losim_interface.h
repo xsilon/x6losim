@@ -77,6 +77,16 @@ struct node_to_netsim_registration_con_pkt
 
 } __attribute__((__packed__ ));
 
+/*
+ * Node -> NetSim DeRegistration Request.
+ *
+ * Request node's deregistration.
+ */
+struct node_to_netsim_deregistration_req_pkt
+{
+	struct netsim_pkt_hdr hdr;
+
+} __attribute__((__packed__ ));
 
 /*
  * We have a 128 byte header followed by the actual 802.15.4 frame.

@@ -215,7 +215,6 @@ public:
 	{
 		close(poller.epfd);
 		timer_delete(timer);
-		free(name);
 		/* Remove and free nodes from registration list, remembering that
 		 * nodes could potentially be in node hash map so we will only free
 		 * them if they are in the right state */
@@ -227,6 +226,8 @@ public:
 		while (iter != unregList.end()) {
 			DeviceNode *node = *iter;
 
+			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
+					name, node->getNodeId());
 			iter = unregList.erase(iter);
 			/* This will delete timer and close socket */
 			if (node->getState() == DEV_NODE_STATE_REGISTERING)
@@ -239,12 +240,17 @@ public:
 		/* Remove and free nodes from the node hash map */
 		iterMap = nodeHashMap.begin();
 		while (iterMap != nodeHashMap.end()) {
-			std::pair<const long unsigned int, DeviceNode*>item = *iterMap;
+			DeviceNode *node = iterMap->second;
 
+			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from node hash map",
+					name, iterMap->first);
+			assert(iterMap->first == node->getNodeId());
 			iterMap = nodeHashMap.erase(iterMap);
 			/* This will delete timer and close socket */
-			delete item.second;
+			delete node;
 		}
+
+		free(name);
 	}
 
 	enum PhysicalMediumState state;
@@ -276,14 +282,8 @@ PhysicalMedium::~PhysicalMedium() {
 		delete pimpl;
 }
 
-#if 0
-void PhysicalMedium::startPacketArbitrator()
-{
-//	pktArbitrator->start();
-}
-#endif
-
-void PhysicalMedium::addNode(DeviceNode* node)
+void
+PhysicalMedium::addNode(DeviceNode* node)
 {
 	struct epoll_event ev;
 	int rv;
@@ -312,82 +312,6 @@ void PhysicalMedium::addNode(DeviceNode* node)
 }
 
 void
-PhysicalMedium::removeNode(DeviceNode* nodeToRemove)
-{
-	std::list<DeviceNode *>::iterator iter;
-
-	/* Iterate through unreg list and remove and delete all nodes that
-	 * have timedout. */
-	pimpl->unregListMutex.lock();
-	iter = pimpl->unregList.begin();
-	while (iter != pimpl->unregList.end()) {
-		DeviceNode *node = *iter;
-
-		if (node == nodeToRemove) {
-			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
-					pimpl->name, node->getNodeId());
-			pimpl->unregList.erase(iter++);
-			/* This will delete timer and close socket */
-			delete node;
-		} else {
-			iter++;
-		}
-
-	}
-	pimpl->unregListMutex.unlock();
-
-}
-
-#if 0
-void
-PhysicalMedium::interval(long nanoseconds)
-{
-	struct timeval start, finish;
-	struct timespec request, remain;
-	int rv;
-
-	pimpl->curTime.tv_nsec += nanoseconds;
-	if (pimpl->curTime.tv_nsec >= 1000000000) {
-		pimpl->curTime.tv_sec += pimpl->curTime.tv_nsec / 1000000000;
-		pimpl->curTime.tv_nsec %= 1000000000;
-	}
-	request = pimpl->curTime;
-
-	if (gettimeofday(&start, NULL) == -1)
-		throw "gettimeofday unrecoverable error";
-	for (;;) {
-		rv = clock_nanosleep(pimpl->clockidToUse, TIMER_ABSTIME,
-				     &request, &remain);
-
-		if (rv != 0 && rv != EINTR) {
-			/* Must be EFAULT or EINVAL which means some dodgy coding
-			 * going on somewhere, exit cleanly */
-			xlog(LOG_ALERT, "clock_nanosleep failed (%s)", strerror(rv));
-			throw "clock_nanosleep unrecoverable error";
-		}
-
-		if (loglevel == LOG_DEBUG) {
-			if (gettimeofday(&finish, NULL) == -1)
-				throw "gettimeofday unrecoverable error";
-//			xlog(LOG_DEBUG, "Slept: %.6f secs",
-//				finish.tv_sec - start.tv_sec
-//				+ (finish.tv_usec - start.tv_usec) / 1000000.0);
-		}
-
-		if (rv == 0)
-			break; /* sleep completed */
-
-		xlog(LOG_DEBUG, "... Remaining: %ld.%09ld",
-			(long) remain.tv_sec, remain.tv_nsec);
-		request = remain;
-
-		xlog(LOG_DEBUG, "... Restarting\n");
-	}
-
-}
-#endif
-
-void
 PhysicalMedium::processPollerEvents(int numEvents)
 {
 	int i;
@@ -408,7 +332,8 @@ PhysicalMedium::processPollerEvents(int numEvents)
 				if (DeviceNode *node = static_cast<DeviceNode *>(evp->data.ptr)) {
 					xlog(LOG_NOTICE, "Client closed (%d)", node->getSocketFd());
 					/* Remove from unregList or nodeMap */
-					removeNode(node);
+					deregisterNode(node);
+					evp++;
 					continue;
 				} else {
 					throw "Poller EPOLLRDHUP: Not a Device node";
@@ -423,7 +348,10 @@ PhysicalMedium::processPollerEvents(int numEvents)
 				break;
 			} else {
 				if (DeviceNode *node = static_cast<DeviceNode *>(evp->data.ptr)) {
-					node->readMsg();
+					node->readMsg(this);
+					if (node->getState() == DEV_NODE_STATE_DEREGISTERING) {
+						deregisterNode(node);
+					}
 				} else {
 					throw "Poller EPOLLIN: Not a Device node";
 				}
@@ -448,15 +376,24 @@ PhysicalMedium::checkNodeRegistrationTimeout()
 	while (iter != pimpl->unregList.end()) {
 		DeviceNode *node = *iter;
 
-		assert(node->getState() == DEV_NODE_STATE_REGISTERING);
-		if (node->registrationTimeout()) {
-			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
-					pimpl->name, node->getNodeId());
-			pimpl->unregList.erase(iter++);
-			/* This will delete timer and close socket */
-			delete node;
+		assert(node->getState() != DEV_NODE_STATE_UNREG);
+
+		if (node->getState() == DEV_NODE_STATE_REGISTERING) {
+
+			if (node->registrationTimeout()) {
+				xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
+						pimpl->name, node->getNodeId());
+				iter = pimpl->unregList.erase(iter);
+				/* This will delete timer and close socket */
+				delete node;
+			} else {
+				iter++;
+			}
 		} else {
-			iter++;
+			/* Already Registered so removed */
+			xlog(LOG_DEBUG, "%s: Removing Registered Node ID (0x%016llx) from registration list",
+					pimpl->name, node->getNodeId());
+			iter = pimpl->unregList.erase(iter);
 		}
 
 	}
@@ -528,15 +465,8 @@ PhysicalMedium::start()
 	return 0;
 }
 
-void PhysicalMedium::waitForExit()
-{
-	void *res;
-	xlog(LOG_NOTICE, "%s: Wait for exit from Physical Medium thread", pimpl->name);
-	pthread_join(pimpl->thread, &res);
-	xlog(LOG_NOTICE, "%s: Exit from Physical Medium thread", pimpl->name);
-}
-
-void *PhysicalMedium::run() {
+void *
+PhysicalMedium::run() {
 
 	pimpl->state = IDLE;
 	if (clock_gettime(pimpl->clockidToUse, &pimpl->curTime) == -1)
@@ -556,84 +486,95 @@ void *PhysicalMedium::run() {
 	return 0;
 }
 
-void PhysicalMedium::stop()
+void
+PhysicalMedium::stop()
 {
 	pimpl->state = STOPPING;
 }
 
-
-#if 0
 void
-void
-PhysicalMedium::handleRegistrationConfirm()
+PhysicalMedium::waitForExit()
 {
-	//TODO: Move to the part where the node is registered.
-	pimpl->nodeHashMap.insert(std::make_pair(node->getNodeId(), node));
-
+	void *res;
+	xlog(LOG_NOTICE, "%s: Wait for exit from Physical Medium thread", pimpl->name);
+	pthread_join(pimpl->thread, &res);
+	xlog(LOG_NOTICE, "%s: Exit from Physical Medium thread", pimpl->name);
 }
 
-processRegistrationConfirmation()
+void
+PhysicalMedium::registerNode(DeviceNode *node)
 {
-	SocketReadStatus readStatus;
-	int bytesRead;
+	xlog(LOG_DEBUG, "%s: Registering node (0x%016llx) with node hash map", pimpl->name,
+			node->getNodeId());
+	pimpl->nodeHashMap.insert({node->getNodeId(), node});
+}
 
-	/* Wait 5 seconds for reply otherwise node is deemed unreachable */
-	readStatus = pimpl->socket->recvReply((char *)reply, replyMsgLen, 5000,
-			&bytesRead, &NetworkSimulator::getUnblocker());
-	switch (readStatus) {
-	case SOCK_READ_OK:
-		assert(replyMsgLen == bytesRead);
-		if (reply->hdr.interface_version == NETSIM_INTERFACE_VERSION) {
-			/* Copy Registration info out */
-			memset(pimpl->os, 0, sizeof(pimpl->os));
-			strncpy(pimpl->os, reply->os, strlen(reply->os));
-			if (pimpl->os[sizeof(pimpl->os) - 1] != '\0')
-				pimpl->os[sizeof(pimpl->os) - 1] = '\0';
-			memset(pimpl->osVersion, 0, sizeof(pimpl->osVersion));
-			strncpy(pimpl->osVersion, reply->os_version, strlen(reply->os_version));
-			if (pimpl->osVersion[sizeof(pimpl->osVersion) - 1] != '\0')
-				pimpl->osVersion[sizeof(pimpl->osVersion) - 1] = '\0';
+void
+PhysicalMedium::deregisterNode(DeviceNode* nodeToRemove)
+{
+	std::list<DeviceNode *>::iterator iter;
+	bool nodeRemoved = false;
 
-			xlog(LOG_DEBUG, "Registering node 0x%16x (%s %s)",
-					(uint64_t)pimpl->socket, pimpl->os,
-					pimpl->osVersion);
-		} else {
-			success = false;
+	assert(nodeToRemove->getState() != DEV_NODE_STATE_UNREG);
+	if (nodeToRemove->getState() == DEV_NODE_STATE_REGISTERING) {
+		/* Iterate through unreg list and remove and delete all nodes that
+		 * have timedout. */
+		pimpl->unregListMutex.lock();
+		iter = pimpl->unregList.begin();
+		while (iter != pimpl->unregList.end()) {
+			DeviceNode *node = *iter;
+
+			if (node == nodeToRemove) {
+				xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
+						pimpl->name, node->getNodeId());
+				pimpl->unregList.erase(iter++);
+				/* This will delete timer and close socket */
+				delete node;
+				nodeRemoved = true;
+			} else {
+				iter++;
+			}
+
 		}
-		break;
-	case SOCK_READ_CONN_CLOSED:
-	case SOCK_READ_UNBLOCKED:
-	case SOCK_READ_TIMEOUT:
-	case SOCK_READ_ERROR:
-		success = false;
-		break;
-	default:
-		throw "Unknown read status";
+		pimpl->unregListMutex.unlock();
+	} else {
+		int n;
+
+		n = pimpl->nodeHashMap.erase(nodeToRemove->getNodeId());
+		assert (n == 1);
+		xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from node hash map",
+				pimpl->name, nodeToRemove->getNodeId());
+		delete nodeToRemove;
+		nodeRemoved = true;
 	}
+	assert(nodeRemoved);
 }
-#endif
 
 // ______________________________________________ PowerlineMedium Implementation
 
-void PowerlineMedium::addNode(HanaduDeviceNode* node)
+void
+PowerlineMedium::addNode(HanaduDeviceNode* node)
 {
 	PhysicalMedium::addNode(node);
 }
 
-void PowerlineMedium::removeNode(HanaduDeviceNode* node)
+void
+PowerlineMedium::removeNode(HanaduDeviceNode* node)
 {
-	PhysicalMedium::removeNode(node);
+	PhysicalMedium::deregisterNode(node);
 }
 
 // _______________________________________________ WirelessMedium Implementation
 
-void WirelessMedium::addNode(WirelessDeviceNode* node)
+void
+WirelessMedium::addNode(WirelessDeviceNode* node)
 {
 	PhysicalMedium::addNode(node);
 }
 
-void WirelessMedium::removeNode(WirelessDeviceNode* node)
+void
+WirelessMedium::removeNode(WirelessDeviceNode* node)
 {
-	PhysicalMedium::removeNode(node);
+	PhysicalMedium::deregisterNode(node);
 }
 

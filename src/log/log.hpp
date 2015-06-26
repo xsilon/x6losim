@@ -21,6 +21,6 @@ _xlog_log_hexdump(
 	const void * print_address);
 
 #define xlog(l, fmt, args...) _xlog(__FILE__, __FUNCTION__, __LINE__, l, fmt, ## args)
-#define xlog_hexdump(l, p, len) _xlog_log_hexdump(__FILE__, __FUNCTION__, __LINE__, l, p, len, 0)
+#define xlog_hexdump(l, p, len) _xlog_log_hexdump(__FILE__, __FUNCTION__, __LINE__, l, p, len, p)
 
 #endif
