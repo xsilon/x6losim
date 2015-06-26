@@ -121,7 +121,13 @@ public:
 	{
 		throw "ActiveState: handleRegistrationConfirm";
 	}
-	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node)
+	{
+		//Deregister node (this will delete it to so ensure we return
+		//NULL to stop caller trying to use the deleted node
+		node.getMedium()->deregisterNode(&node);
+		return NULL;
+	}
 	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
 	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
 };
@@ -151,7 +157,13 @@ public:
 
 		return new ActiveState();
 	}
-	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node)
+	{
+		//Deregister node (this will delete it to so ensure we return
+		//NULL to stop caller trying to use the deleted node
+		node.getMedium()->deregisterNode(&node);
+		return NULL;
+	}
 	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
 	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
 };
@@ -167,7 +179,13 @@ class TxState : public IDeviceNodeState
 	{
 		throw "TxState: handleRegistrationConfirm";
 	}
-	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node)
+	{
+		//Deregister node (this will delete it to so ensure we return
+		//NULL to stop caller trying to use the deleted node
+		node.getMedium()->deregisterNode(&node);
+		return NULL;
+	}
 	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
 	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
 };
@@ -491,10 +509,21 @@ DeviceNode::handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCo
 void
 DeviceNode::handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq)
 {
+	IDeviceNodeState *newState;
+
 	// No need to check and stop timer as we will be destroying node
 	// which will handle this.
 	//pimpl->state = DEV_NODE_STATE_DEREGISTERING;
 	sendDeregistrationConfirm();
+
+	newState = pimpl->curState->handleDeregistrationRequest(*this);
+	if (newState) {
+		pimpl->curState->exit(*this);
+		delete pimpl->curState;
+		pimpl->curState = newState;
+		pimpl->curState->enter(*this);
+	}
+
 }
 
 

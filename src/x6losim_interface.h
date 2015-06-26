@@ -35,6 +35,8 @@ enum msg_type
 	MSG_TYPE_CCA_CON
 };
 
+#pragma pack (push, 1)
+
 struct netsim_pkt_hdr
 {
 	/* Includes size of this header */
@@ -113,5 +115,6 @@ struct node_to_netsim_data_pkt_hdr
 	};
 } __attribute__((__packed__ ));
 
+#pragma pack (pop)
 
 #endif

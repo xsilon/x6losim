@@ -79,7 +79,7 @@ send_dereg_req(int sockfd, uint64_t nodeId)
 	send(sockfd, &dereg_req, sizeof(dereg_req), MSG_NOSIGNAL);
 }
 
-
+// TODO Check those checksums :)
 int
 main()
 {

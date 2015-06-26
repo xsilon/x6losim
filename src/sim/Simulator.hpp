@@ -141,10 +141,10 @@ public:
 	void waitForExit();
 
 	void registerNode(DeviceNode *node);
+	void deregisterNode(DeviceNode *node);
 
 protected:
 	void addNode(DeviceNode *node);
-	void deregisterNode(DeviceNode *node);
 
 private:
 	PhysicalMedium_pimpl * pimpl;
