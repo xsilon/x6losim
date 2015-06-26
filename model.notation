@@ -2050,7 +2050,7 @@
         <layoutConstraint xmi:type="notation:Location" xmi:id="_lh6osRv0EeWPq9in8tgSYg" y="20"/>
       </children>
       <children xmi:type="notation:DecorationNode" xmi:id="_lh6oshv0EeWPq9in8tgSYg" type="7002">
-        <layoutConstraint xmi:type="notation:Location" xmi:id="_lh6osxv0EeWPq9in8tgSYg"/>
+        <layoutConstraint xmi:type="notation:Location" xmi:id="_lh6osxv0EeWPq9in8tgSYg" x="-47" y="38"/>
       </children>
       <children xmi:type="notation:DecorationNode" xmi:id="_lh6otBv0EeWPq9in8tgSYg" type="7003">
         <layoutConstraint xmi:type="notation:Location" xmi:id="_lh6otRv0EeWPq9in8tgSYg" y="60"/>

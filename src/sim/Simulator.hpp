@@ -33,13 +33,13 @@ typedef std::list<NetSimPacket *> NetSimPktList;
 
 // _________________________________________________________ Device Node classes
 
-enum DeviceNodeState {
-	DEV_NODE_STATE_UNREG = 0,
-	DEV_NODE_STATE_REGISTERING,
-	DEV_NODE_STATE_ACTIVE,
-	DEV_NODE_STATE_TX,
-	DEV_NODE_STATE_DEREGISTERING
-};
+//enum DeviceNodeState {
+//	DEV_NODE_STATE_UNREG = 0,
+//	DEV_NODE_STATE_REGISTERING,
+//	DEV_NODE_STATE_ACTIVE,
+//	DEV_NODE_STATE_TX,
+//	DEV_NODE_STATE_DEREGISTERING
+//};
 
 class PhysicalMedium;
 class DeviceNode_pimpl;
@@ -52,7 +52,12 @@ public:
 	uint64_t getNodeId();
 	const char *getName();
 	int getSocketFd();
-	DeviceNodeState getState();
+	//DeviceNodeState getState();
+	timer_t getRegTimer();
+
+	bool hasRegistered();
+	bool hasRegTimerExpired();
+
 
 	void readMsg(PhysicalMedium *medium);
 
@@ -61,7 +66,8 @@ public:
 
 	void handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCon);
 	void handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq);
-	bool registrationTimeout();
+
+	void handleRegTimerExpired();
 
 private:
 	DeviceNode_pimpl * pimpl;

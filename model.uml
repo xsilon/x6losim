@@ -199,8 +199,12 @@ DST SA === MAC SA</body>
       </transition>
       <transition xmi:type="uml:Transition" xmi:id="_hVPM4Bv0EeWPq9in8tgSYg" source="_dK1ioBvsEeWPq9in8tgSYg" target="_exU_UBvsEeWPq9in8tgSYg"/>
       <transition xmi:type="uml:Transition" xmi:id="_iGN94Bv0EeWPq9in8tgSYg" source="_exU_UBvsEeWPq9in8tgSYg" target="_dK1ioBvsEeWPq9in8tgSYg"/>
-      <transition xmi:type="uml:Transition" xmi:id="_lDu34Bv0EeWPq9in8tgSYg" source="_dK1ioBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg"/>
-      <transition xmi:type="uml:Transition" xmi:id="_lh2-UBv0EeWPq9in8tgSYg" source="_exU_UBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg"/>
+      <transition xmi:type="uml:Transition" xmi:id="_lDu34Bv0EeWPq9in8tgSYg" name="receivedDeregistrationReq" source="_dK1ioBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg">
+        <effect xmi:type="uml:Activity" xmi:id="_Sm__YBwLEeWlp7FXH5k3RA" name="stop regTimer"/>
+      </transition>
+      <transition xmi:type="uml:Transition" xmi:id="_lh2-UBv0EeWPq9in8tgSYg" name="receivedDeregistration" source="_exU_UBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg">
+        <effect xmi:type="uml:Activity" xmi:id="_XtTK0BwLEeWlp7FXH5k3RA" name="stop regTimer"/>
+      </transition>
       <transition xmi:type="uml:Transition" xmi:id="_mA_xYBv0EeWPq9in8tgSYg" name="receviedDeregistrationReq" source="_bc5aIBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg">
         <effect xmi:type="uml:Activity" xmi:id="_EI4yABv1EeWPq9in8tgSYg" name="stop regTimer"/>
       </transition>

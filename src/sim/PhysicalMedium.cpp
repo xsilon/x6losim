@@ -378,24 +378,22 @@ PhysicalMedium::checkNodeRegistrationTimeout()
 
 		assert(node->getState() != DEV_NODE_STATE_UNREG);
 
-		if (node->getState() == DEV_NODE_STATE_REGISTERING) {
-
-			if (node->registrationTimeout()) {
-				xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
-						pimpl->name, node->getNodeId());
-				iter = pimpl->unregList.erase(iter);
-				/* This will delete timer and close socket */
-				delete node;
-			} else {
-				iter++;
-			}
-		} else {
-			/* Already Registered so removed */
+		if (node->hasRegistered()) {
 			xlog(LOG_DEBUG, "%s: Removing Registered Node ID (0x%016llx) from registration list",
 					pimpl->name, node->getNodeId());
 			iter = pimpl->unregList.erase(iter);
-		}
+		} else if (node->hasRegTimerExpired()) {
+			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
+					pimpl->name, node->getNodeId());
+			iter = pimpl->unregList.erase(iter);
 
+			//This will probably delete the node so we MUST NOT
+			//USE it afterwards
+			node->handleRegTimerExpired();
+		} else {
+			// Node not registered or timed out
+			iter++;
+		}
 	}
 	pimpl->unregListMutex.unlock();
 }

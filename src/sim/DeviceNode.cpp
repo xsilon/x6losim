@@ -53,6 +53,63 @@ static inline uint64_t ntohll(uint64_t x)
 #define htonll ntohll
 #endif
 
+class IDeviceNodeState
+{
+public:
+	virtual ~IDeviceNodeState() {}
+	virtual void handleRegTimerExpired(DeviceNode &node) { }
+	virtual void handleTxTimerExpired(DeviceNode &node) {}
+	virtual void handleRegistrationConfirm(DeviceNode &node) {}
+	virtual void handleDeregistrationRequest(DeviceNode &node) {}
+	virtual void handleCcaRequest(DeviceNode &node) {}
+	virtual void handleTxRequest(DeviceNode &node) {}
+};
+
+class UnregisteredState : public IDeviceNodeState
+{
+	//UnregisteredState();
+
+	void handleRegTimerExpired(DeviceNode &node)
+	{
+		throw "UnregisteredState: handleCheckRegTimer";
+	}
+
+};
+
+class RegisteringState : public IDeviceNodeState
+{
+public:
+	void handleRegTimerExpired(DeviceNode &node)
+	{
+		delete(&node);
+	}
+};
+
+class DeregisteringState : public IDeviceNodeState
+{
+	void handleRegTimerExpired(DeviceNode &node)
+	{
+		throw "DeregisteringState: handleCheckRegTimer";
+	}
+
+};
+
+class ActiveState : public IDeviceNodeState
+{
+	void handleRegTimerExpired(DeviceNode &node)
+	{
+		throw "ActiveState: handleCheckRegTimer";
+	}
+};
+
+class TxState : public IDeviceNodeState
+{
+	void handleRegTimerExpired(DeviceNode &node)
+	{
+		throw "TxState: handleCheckRegTimer";
+	}
+};
+
 // ___________________________________________________ DeviceNode Implementation
 
 class DeviceNode_pimpl {
@@ -60,7 +117,6 @@ public:
 	DeviceNode_pimpl(int sockfd) : sockfd(sockfd)
 	{
 		socket = new Socket(sockfd);
-		state = DEV_NODE_STATE_UNREG;
 		/*
 		 * SIGEV_NONE is supposed to prevent signal delivery, but it doesn't.
 		 * Set signo to SIGSTOP to make the received signal obvious but
@@ -74,16 +130,18 @@ public:
 		memset(&os, 0, sizeof(os));
 		memset(&osVersion, 0, sizeof(osVersion));
 		regTimerStarted = false;
+		curState = new UnregisteredState();
 	}
 	~DeviceNode_pimpl()
 	{
 		delete socket;
+		delete curState;
 	}
 	int sockfd;
 	Socket * socket;
 	char os[32];
 	char osVersion[32];
-	DeviceNodeState state;
+	IDeviceNodeState *curState;
 
 	static struct itimerspec regTimerSpec;
 	struct sigevent regTimerSigEvent;
@@ -134,10 +192,36 @@ DeviceNode::getSocketFd()
 	return (uint64_t)pimpl->sockfd;
 }
 
-DeviceNodeState
-DeviceNode::getState()
+//DeviceNodeState
+//DeviceNode::getState()
+//{
+//	return pimpl->state;
+//}
+
+timer_t
+DeviceNode::getRegTimer()
 {
-	return pimpl->state;
+	return pimpl->regTimer;
+}
+
+bool
+DeviceNode::hasRegistered()
+{
+//	if ()
+}
+
+bool
+DeviceNode::hasRegTimerExpired()
+{
+	itimerspec ts_left;
+
+	if (timer_gettime(pimpl->regTimer, &ts_left) == -1)
+		throw "PhysicalMedium::interval: failed to get timer";
+
+	if (ts_left.it_value.tv_sec == 0 && ts_left.it_value.tv_nsec == 0)
+		return true;
+	else
+		return false;
 }
 
 void
@@ -334,22 +418,16 @@ DeviceNode::stopRegistrationTimer()
 	}
 }
 
-bool
-DeviceNode::registrationTimeout()
+// ______________________________________________ DeviceNodeState Implementation
+
+void
+DeviceNode::handleRegTimerExpired()
 {
-	itimerspec ts_left;
-
-	if (timer_gettime(pimpl->regTimer, &ts_left) == -1)
-		throw "PhysicalMedium::interval: failed to get timer";
-
-	if (ts_left.it_value.tv_sec == 0 && ts_left.it_value.tv_nsec == 0)
-		return true;
-	else
-		return false;
+	DeviceNodeState *newState = curState->
 }
 
 
-
+// _____________________________________________ HanaduDeviceNode Implementation
 
 class HanaduDeviceNode_pimpl {
 public:
@@ -371,6 +449,8 @@ HanaduDeviceNode::~HanaduDeviceNode()
 	if (pimpl)
 		delete pimpl;
 }
+
+// ___________________________________________ WirelessDeviceNode Implementation
 
 class WirelessDeviceNode_pimpl {
 public:
