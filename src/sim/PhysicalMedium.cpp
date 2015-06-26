@@ -215,26 +215,21 @@ public:
 	{
 		close(poller.epfd);
 		timer_delete(timer);
-		/* Remove and free nodes from registration list, remembering that
-		 * nodes could potentially be in node hash map so we will only free
-		 * them if they are in the right state */
-		std::list<DeviceNode *>::iterator iter;
-		/* Iterate through unreg list and remove and delete all nodes that
-		 * have timedout.s */
-		unregListMutex.lock();
-		iter = unregList.begin();
-		while (iter != unregList.end()) {
-			DeviceNode *node = *iter;
+		/* Remove and free nodes from registration list and then from
+		 * the node hash map, they can only be in one of these. */
+		std::unordered_map<uint64_t, DeviceNode *>::iterator iter;
+		regListMapMutex.lock();
+		iter = regListMap.begin();
+		while (iter != regListMap.end()) {
+			DeviceNode *node = iter->second;
 
 			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
 					name, node->getNodeId());
-			iter = unregList.erase(iter);
-			/* This will delete timer and close socket */
-			if (node->getState() == DEV_NODE_STATE_REGISTERING)
-				delete node;
-
+			assert(iter->first == node->getNodeId());
+			iter = regListMap.erase(iter);
+			delete node;
 		}
-		unregListMutex.unlock();
+		regListMapMutex.unlock();
 
 		std::unordered_map<uint64_t, DeviceNode *>::iterator iterMap;
 		/* Remove and free nodes from the node hash map */
@@ -259,8 +254,8 @@ public:
 	struct sigevent sev;
 	struct timespec curTime;
 	std::unordered_map<uint64_t, DeviceNode *> nodeHashMap;
-	std::list<DeviceNode *> unregList;
-	std::mutex unregListMutex;
+	std::unordered_map<uint64_t, DeviceNode *> regListMap;
+	std::mutex regListMapMutex;
 	pthread_t thread;
 	char * name;
 
@@ -290,6 +285,9 @@ PhysicalMedium::addNode(DeviceNode* node)
 
 	xlog(LOG_DEBUG, "%s: Adding Node ID (0x%016llx) to registration list",
 		pimpl->name, node->getNodeId());
+
+	node->setMedium(this);
+
 	ev.events = EPOLLIN | EPOLLRDHUP;
 	ev.data.ptr = node;
 
@@ -306,9 +304,9 @@ PhysicalMedium::addNode(DeviceNode* node)
 			throw "epoll_ctl: Error";
 		}
 	}
-	pimpl->unregListMutex.lock();
-	pimpl->unregList.push_back(node);
-	pimpl->unregListMutex.unlock();
+	pimpl->regListMapMutex.lock();
+	pimpl->regListMap.insert({node->getNodeId(), node});
+	pimpl->regListMapMutex.unlock();
 }
 
 void
@@ -348,10 +346,7 @@ PhysicalMedium::processPollerEvents(int numEvents)
 				break;
 			} else {
 				if (DeviceNode *node = static_cast<DeviceNode *>(evp->data.ptr)) {
-					node->readMsg(this);
-					if (node->getState() == DEV_NODE_STATE_DEREGISTERING) {
-						deregisterNode(node);
-					}
+					node->readMsg();
 				} else {
 					throw "Poller EPOLLIN: Not a Device node";
 				}
@@ -368,24 +363,20 @@ PhysicalMedium::processPollerEvents(int numEvents)
 void
 PhysicalMedium::checkNodeRegistrationTimeout()
 {
-	std::list<DeviceNode *>::iterator iter;
+	std::unordered_map<uint64_t, DeviceNode *>::iterator iter;
+
 	/* Iterate through unreg list and remove and delete all nodes that
 	 * have timedout. */
-	pimpl->unregListMutex.lock();
-	iter = pimpl->unregList.begin();
-	while (iter != pimpl->unregList.end()) {
-		DeviceNode *node = *iter;
+	pimpl->regListMapMutex.lock();
+	iter = pimpl->regListMap.begin();
+	while (iter != pimpl->regListMap.end()) {
+		DeviceNode *node = iter->second;
 
-		assert(node->getState() != DEV_NODE_STATE_UNREG);
-
-		if (node->hasRegistered()) {
-			xlog(LOG_DEBUG, "%s: Removing Registered Node ID (0x%016llx) from registration list",
-					pimpl->name, node->getNodeId());
-			iter = pimpl->unregList.erase(iter);
-		} else if (node->hasRegTimerExpired()) {
+		assert(node->getNodeId() == iter->first);
+		if (node->hasRegTimerExpired()) {
 			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
 					pimpl->name, node->getNodeId());
-			iter = pimpl->unregList.erase(iter);
+			iter = pimpl->regListMap.erase(iter);
 
 			//This will probably delete the node so we MUST NOT
 			//USE it afterwards
@@ -395,7 +386,7 @@ PhysicalMedium::checkNodeRegistrationTimeout()
 			iter++;
 		}
 	}
-	pimpl->unregListMutex.unlock();
+	pimpl->regListMapMutex.unlock();
 }
 
 /*
@@ -502,41 +493,35 @@ PhysicalMedium::waitForExit()
 void
 PhysicalMedium::registerNode(DeviceNode *node)
 {
+	int n;
 	xlog(LOG_DEBUG, "%s: Registering node (0x%016llx) with node hash map", pimpl->name,
 			node->getNodeId());
+
+	pimpl->regListMapMutex.lock();
+	n = pimpl->regListMap.erase(node->getNodeId());
+	pimpl->regListMapMutex.unlock();
+
+	assert(n == 1);
 	pimpl->nodeHashMap.insert({node->getNodeId(), node});
 }
 
 void
 PhysicalMedium::deregisterNode(DeviceNode* nodeToRemove)
 {
-	std::list<DeviceNode *>::iterator iter;
+	int n;
 	bool nodeRemoved = false;
 
-	assert(nodeToRemove->getState() != DEV_NODE_STATE_UNREG);
-	if (nodeToRemove->getState() == DEV_NODE_STATE_REGISTERING) {
-		/* Iterate through unreg list and remove and delete all nodes that
-		 * have timedout. */
-		pimpl->unregListMutex.lock();
-		iter = pimpl->unregList.begin();
-		while (iter != pimpl->unregList.end()) {
-			DeviceNode *node = *iter;
-
-			if (node == nodeToRemove) {
-				xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list",
-						pimpl->name, node->getNodeId());
-				pimpl->unregList.erase(iter++);
-				/* This will delete timer and close socket */
-				delete node;
-				nodeRemoved = true;
-			} else {
-				iter++;
-			}
-
-		}
-		pimpl->unregListMutex.unlock();
-	} else {
-		int n;
+	/* Remove from register list map, if not found then must be on node hash map. */
+	pimpl->regListMapMutex.lock();
+	n = pimpl->nodeHashMap.erase(nodeToRemove->getNodeId());
+	if (n == 1) {
+		xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list map",
+				pimpl->name, nodeToRemove->getNodeId());
+		delete nodeToRemove;
+		nodeRemoved = true;
+	}
+	pimpl->regListMapMutex.unlock();
+	if (n == 0) {
 
 		n = pimpl->nodeHashMap.erase(nodeToRemove->getNodeId());
 		assert (n == 1);

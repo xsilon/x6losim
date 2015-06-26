@@ -57,57 +57,119 @@ class IDeviceNodeState
 {
 public:
 	virtual ~IDeviceNodeState() {}
-	virtual void handleRegTimerExpired(DeviceNode &node) { }
-	virtual void handleTxTimerExpired(DeviceNode &node) {}
-	virtual void handleRegistrationConfirm(DeviceNode &node) {}
-	virtual void handleDeregistrationRequest(DeviceNode &node) {}
-	virtual void handleCcaRequest(DeviceNode &node) {}
-	virtual void handleTxRequest(DeviceNode &node) {}
+	virtual void enter(DeviceNode &node) { }
+	virtual void exit(DeviceNode &node) { }
+	virtual IDeviceNodeState *handleRegTimerExpired(DeviceNode &node) { return NULL; }
+	virtual IDeviceNodeState *handleTxTimerExpired(DeviceNode &node) { return NULL; }
+	virtual IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node) {  return NULL; }
+	virtual IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) {  return NULL; }
+	virtual IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
+	virtual IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
 };
 
-class UnregisteredState : public IDeviceNodeState
+//class UnregisteredState : public IDeviceNodeState
+//{
+//	IDeviceNodeState *handleNode
+//	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
+//	{
+//		throw "UnregisteredState: handleCheckRegTimer";
+//	}
+//	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
+//	{
+//		throw "UnregisteredState: handleTxTimerExpired";
+//	}
+//	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
+//	{
+//		throw "UnregisteredState: handleRegistrationConfirm";
+//	}
+//	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) { return NULL; }
+//	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
+//	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
+//
+//};
+
+//class DeregisteringState : public IDeviceNodeState
+//{
+//	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
+//	{
+//		throw "DeregisteringState: handleCheckRegTimer";
+//	}
+//	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
+//	{
+//		throw "DeregisteringState: handleTxTimerExpired";
+//	}
+//	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
+//	{
+//		//Ignore as we are
+//	}
+//	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) {}
+//	IDeviceNodeState *handleCcaRequest(DeviceNode &node) {}
+//	IDeviceNodeState *handleTxRequest(DeviceNode &node) {}
+//
+//};
+
+class ActiveState : public IDeviceNodeState
 {
-	//UnregisteredState();
-
-	void handleRegTimerExpired(DeviceNode &node)
+public:
+	ActiveState() {}
+	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
 	{
-		throw "UnregisteredState: handleCheckRegTimer";
+		throw "ActiveState: handleCheckRegTimer";
 	}
-
+	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
+	{
+		throw "ActiveState: handleRegistrationConfirm";
+	}
+	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
 };
 
 class RegisteringState : public IDeviceNodeState
 {
 public:
-	void handleRegTimerExpired(DeviceNode &node)
+	RegisteringState(DeviceNode &node)
+	{
+		node.sendRegistrationRequest();
+		/* Start registration timer */
+		node.startRegistrationTimer();
+	}
+	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
 	{
 		delete(&node);
+		return NULL;
 	}
-};
-
-class DeregisteringState : public IDeviceNodeState
-{
-	void handleRegTimerExpired(DeviceNode &node)
+	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
 	{
-		throw "DeregisteringState: handleCheckRegTimer";
+		throw "RegisteringState: handleTxTimerExpired";
 	}
-
-};
-
-class ActiveState : public IDeviceNodeState
-{
-	void handleRegTimerExpired(DeviceNode &node)
+	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
 	{
-		throw "ActiveState: handleCheckRegTimer";
+		node.stopRegistrationTimer();
+		node.getMedium()->registerNode(&node);
+
+		return new ActiveState();
 	}
+	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
 };
 
 class TxState : public IDeviceNodeState
 {
-	void handleRegTimerExpired(DeviceNode &node)
+	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
 	{
 		throw "TxState: handleCheckRegTimer";
 	}
+	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
+	{
+		throw "TxState: handleRegistrationConfirm";
+	}
+	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
 };
 
 // ___________________________________________________ DeviceNode Implementation
@@ -130,13 +192,15 @@ public:
 		memset(&os, 0, sizeof(os));
 		memset(&osVersion, 0, sizeof(osVersion));
 		regTimerStarted = false;
-		curState = new UnregisteredState();
+		medium = NULL;
 	}
 	~DeviceNode_pimpl()
 	{
 		delete socket;
 		delete curState;
 	}
+
+	PhysicalMedium *medium;
 	int sockfd;
 	Socket * socket;
 	char os[32];
@@ -168,6 +232,9 @@ DeviceNode::DeviceNode(int sockfd)
 {
 	pimpl = new DeviceNode_pimpl(sockfd);
 	pimpl->socket->setCloseOnExec(true);
+	//Put this node in registering state which will send registration req.
+	pimpl->curState = new RegisteringState(*this);
+
 
 }
 
@@ -204,11 +271,6 @@ DeviceNode::getRegTimer()
 	return pimpl->regTimer;
 }
 
-bool
-DeviceNode::hasRegistered()
-{
-//	if ()
-}
 
 bool
 DeviceNode::hasRegTimerExpired()
@@ -248,10 +310,6 @@ DeviceNode::sendRegistrationRequest()
 	n = pimpl->socket->sendMsg((char *)msg, msglen);
 	assert(n == msglen);
 
-	/* Start registration timer */
-	pimpl->state = DEV_NODE_STATE_REGISTERING;
-	startRegistrationTimer();
-
 	free(msg);
 }
 
@@ -278,28 +336,7 @@ DeviceNode::sendDeregistrationConfirm()
 }
 
 void
-DeviceNode::handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCon)
-{
-	BUILD_BUG_ON(sizeof(pimpl->os) != sizeof(regCon->os));
-	BUILD_BUG_ON(sizeof(pimpl->osVersion) != sizeof(regCon->os_version));
-
-	stopRegistrationTimer();
-	strncpy(pimpl->os, regCon->os, sizeof(pimpl->os));
-	strncpy(pimpl->osVersion, regCon->os, sizeof(pimpl->osVersion));
-	pimpl->state = DEV_NODE_STATE_ACTIVE;
-}
-
-void
-DeviceNode::handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq)
-{
-	// No need to check and stop timer as we will be destroying node
-	// which will handle this.
-	pimpl->state = DEV_NODE_STATE_DEREGISTERING;
-	sendDeregistrationConfirm();
-}
-
-void
-DeviceNode::readMsg(PhysicalMedium *medium)
+DeviceNode::readMsg()
 {
 	char *msgData = NULL;
 	int rv;
@@ -357,28 +394,15 @@ DeviceNode::readMsg(PhysicalMedium *medium)
 		switch(msgType) {
 		case MSG_TYPE_REG_CON:
 			xlog(LOG_INFO, "MSG_TYPE_REG_CON");
-			if (pimpl->state == DEV_NODE_STATE_REGISTERING) {
-				handleRegistrationConfirm((node_to_netsim_registration_con_pkt *)msgData);
-				medium->registerNode(this);
-			} else {
-				xlog(LOG_ERR, "Received reg confirm for a node that is in state %d", pimpl->state);
-			}
+			handleRegistrationConfirm((node_to_netsim_registration_con_pkt *)msgData);
 			break;
 		case MSG_TYPE_DEREG_REQ:
 			xlog(LOG_INFO, "MSG_TYPE_DEREG_REQ");
-			if (pimpl->state == DEV_NODE_STATE_REGISTERING
-				|| pimpl->state == DEV_NODE_STATE_ACTIVE
-				|| pimpl->state == DEV_NODE_STATE_TX
-			) {
-				//TODO: Do we need to do something special if we
-				//are in TX state.
-				handleDeregistrationRequest((node_to_netsim_deregistration_req_pkt *)msgData);
-				//The medium has to delete this node so we don't deregister here,
-				//The caller will check the state and do this on return.
-			} else {
-				xlog(LOG_ERR, "Received reg confirm for a node that is in state %d", pimpl->state);
-			}
-			break;
+			//TODO: Do we need to do something special if we
+			//are in TX state.
+			handleDeregistrationRequest((node_to_netsim_deregistration_req_pkt *)msgData);
+			//The medium has to delete this node so we don't deregister here,
+			//The caller will check the state and do this on return.
 			break;
 		case MSG_TYPE_CCA_REQ:
 			break;
@@ -409,6 +433,17 @@ DeviceNode::startRegistrationTimer()
 	pimpl->regTimerStarted = true;
 }
 
+PhysicalMedium *
+DeviceNode::getMedium()
+{
+	return pimpl->medium;
+}
+
+void
+DeviceNode::setMedium(PhysicalMedium *medium) {
+	pimpl->medium = medium;
+}
+
 void
 DeviceNode::stopRegistrationTimer()
 {
@@ -423,7 +458,43 @@ DeviceNode::stopRegistrationTimer()
 void
 DeviceNode::handleRegTimerExpired()
 {
-	DeviceNodeState *newState = curState->
+	IDeviceNodeState *newState = pimpl->curState->handleRegTimerExpired(*this);
+	if (newState) {
+		pimpl->curState->exit(*this);
+		delete pimpl->curState;
+		pimpl->curState = newState;
+		pimpl->curState->enter(*this);
+	}
+}
+
+void
+DeviceNode::handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCon)
+{
+	IDeviceNodeState *newState;
+
+	BUILD_BUG_ON(sizeof(pimpl->os) != sizeof(regCon->os));
+	BUILD_BUG_ON(sizeof(pimpl->osVersion) != sizeof(regCon->os_version));
+
+	strncpy(pimpl->os, regCon->os, sizeof(pimpl->os));
+	strncpy(pimpl->osVersion, regCon->os, sizeof(pimpl->osVersion));
+
+	newState = pimpl->curState->handleRegistrationConfirm(*this);
+	if (newState) {
+		pimpl->curState->exit(*this);
+		delete pimpl->curState;
+		pimpl->curState = newState;
+		pimpl->curState->enter(*this);
+	}
+	//TODO: Assert pimpl->state = DEV_NODE_STATE_ACTIVE;
+}
+
+void
+DeviceNode::handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq)
+{
+	// No need to check and stop timer as we will be destroying node
+	// which will handle this.
+	//pimpl->state = DEV_NODE_STATE_DEREGISTERING;
+	sendDeregistrationConfirm();
 }
 
 

@@ -45,6 +45,8 @@ class PhysicalMedium;
 class DeviceNode_pimpl;
 class DeviceNode
 {
+friend class RegisteringState;
+
 public:
 	DeviceNode(int sockfd);
 	virtual ~DeviceNode();
@@ -55,19 +57,20 @@ public:
 	//DeviceNodeState getState();
 	timer_t getRegTimer();
 
-	bool hasRegistered();
+	PhysicalMedium *getMedium();
+	void setMedium(PhysicalMedium *medium);
+
 	bool hasRegTimerExpired();
 
-
-	void readMsg(PhysicalMedium *medium);
-
+	void readMsg();
 	void sendRegistrationRequest();
 	void sendDeregistrationConfirm();
 
+	// IDeviceNodeState implementation
+	void handleRegTimerExpired();
 	void handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCon);
 	void handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq);
 
-	void handleRegTimerExpired();
 
 private:
 	DeviceNode_pimpl * pimpl;
