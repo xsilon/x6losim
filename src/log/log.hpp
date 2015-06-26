@@ -20,7 +20,7 @@ _xlog_log_hexdump(
 	uint16_t dump_byte_len,
 	const void * print_address);
 
-#define xlog(l, fmt, args...) _xlog(__FILE__, __FUNCTION__, __LINE__, l, fmt, ## args)
+#define xlog(l, ...) _xlog(__FILE__, __FUNCTION__, __LINE__, l, __VA_ARGS__)
 #define xlog_hexdump(l, p, len) _xlog_log_hexdump(__FILE__, __FUNCTION__, __LINE__, l, p, len, p)
 
 #endif

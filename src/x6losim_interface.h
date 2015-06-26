@@ -32,7 +32,10 @@ enum msg_type
 	MSG_TYPE_DEREG_REQ,
 	MSG_TYPE_DEREG_CON,
 	MSG_TYPE_CCA_REQ,
-	MSG_TYPE_CCA_CON
+	MSG_TYPE_CCA_CON,
+	MSG_TYPE_TX_REQ,
+	MSG_TYPE_TX_CON,
+	MSG_TYPE_TX_DONE_IND,
 };
 
 #pragma pack (push, 1)
@@ -80,6 +83,18 @@ struct node_to_netsim_registration_con_pkt
 } __attribute__((__packed__ ));
 
 /*
+ * Node -> NetSim Clear Channel Assessment Request.
+ *
+ * A node will send this if it's using CCA mode 1 or 3 to ask if the channel
+ * is clear.
+ */
+struct node_to_netsim_cca_req_pkt
+{
+	struct netsim_pkt_hdr hdr;
+
+} __attribute__((__packed__ ));
+
+/*
  * Node -> NetSim DeRegistration Request.
  *
  * Request node's deregistration.
@@ -95,9 +110,9 @@ struct node_to_netsim_deregistration_req_pkt
  */
 struct node_to_netsim_data_pkt_hdr
 {
-	union
+	union data_union
 	{
-		struct {
+		struct data_hdr {
 			struct netsim_pkt_hdr hdr;
 
 			uint8_t source_addr[8];
@@ -106,11 +121,11 @@ struct node_to_netsim_data_pkt_hdr
 			int8_t tx_power; /* the power it was sent at */
 			uint8_t cca_mode; /* the cca mode used */
 			int8_t rssi; /* Received signal strength, set by simulator */
-		};
-		struct {
+		} hdr;
+		struct data_all {
 			char hdr_area[NETSIM_PKT_HDR_SZ];
 			char data[NETSIM_PKT_DATA_SZ];
-		};
+		} all;
 
 	};
 } __attribute__((__packed__ ));

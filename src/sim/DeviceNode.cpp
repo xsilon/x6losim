@@ -67,47 +67,6 @@ public:
 	virtual IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
 };
 
-//class UnregisteredState : public IDeviceNodeState
-//{
-//	IDeviceNodeState *handleNode
-//	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
-//	{
-//		throw "UnregisteredState: handleCheckRegTimer";
-//	}
-//	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
-//	{
-//		throw "UnregisteredState: handleTxTimerExpired";
-//	}
-//	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
-//	{
-//		throw "UnregisteredState: handleRegistrationConfirm";
-//	}
-//	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) { return NULL; }
-//	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
-//	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
-//
-//};
-
-//class DeregisteringState : public IDeviceNodeState
-//{
-//	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
-//	{
-//		throw "DeregisteringState: handleCheckRegTimer";
-//	}
-//	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
-//	{
-//		throw "DeregisteringState: handleTxTimerExpired";
-//	}
-//	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
-//	{
-//		//Ignore as we are
-//	}
-//	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) {}
-//	IDeviceNodeState *handleCcaRequest(DeviceNode &node) {}
-//	IDeviceNodeState *handleTxRequest(DeviceNode &node) {}
-//
-//};
-
 class ActiveState : public IDeviceNodeState
 {
 public:
@@ -128,8 +87,16 @@ public:
 		node.getMedium()->deregisterNode(&node);
 		return NULL;
 	}
-	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
-	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleCcaRequest(DeviceNode &node)
+	{
+		// This is where we expect to get a CCA request
+		return NULL;
+	}
+	IDeviceNodeState *handleTxRequest(DeviceNode &node)
+	{
+		//Should be in Tx State
+		throw "ActiveState: handleTxRequest";
+	}
 };
 
 class RegisteringState : public IDeviceNodeState
@@ -164,8 +131,14 @@ public:
 		node.getMedium()->deregisterNode(&node);
 		return NULL;
 	}
-	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
-	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleCcaRequest(DeviceNode &node)
+	{
+		throw "RegisteringState: handleCcaRequest";
+	}
+	IDeviceNodeState *handleTxRequest(DeviceNode &node)
+	{
+		throw "RegisteringState: handleTxRequest";
+	}
 };
 
 class TxState : public IDeviceNodeState
@@ -186,8 +159,15 @@ class TxState : public IDeviceNodeState
 		node.getMedium()->deregisterNode(&node);
 		return NULL;
 	}
-	IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
-	IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleCcaRequest(DeviceNode &node)
+	{
+		throw "TxState: handleCcaRequest";
+	}
+	IDeviceNodeState *handleTxRequest(DeviceNode &node)
+	{
+		// We are expecting the Tx Request while in this state.
+		return NULL;
+	}
 };
 
 // ___________________________________________________ DeviceNode Implementation
@@ -211,6 +191,7 @@ public:
 		memset(&osVersion, 0, sizeof(osVersion));
 		regTimerStarted = false;
 		medium = NULL;
+		curState = NULL;
 	}
 	~DeviceNode_pimpl()
 	{
@@ -234,7 +215,9 @@ public:
 		int failedReads;
 	} stats;
 };
+
 struct itimerspec DeviceNode_pimpl::regTimerSpec = {
+
 	.it_interval = {
 		.tv_sec =  0,
 		.tv_nsec = 0,
@@ -277,18 +260,11 @@ DeviceNode::getSocketFd()
 	return (uint64_t)pimpl->sockfd;
 }
 
-//DeviceNodeState
-//DeviceNode::getState()
-//{
-//	return pimpl->state;
-//}
-
 timer_t
 DeviceNode::getRegTimer()
 {
 	return pimpl->regTimer;
 }
-
 
 bool
 DeviceNode::hasRegTimerExpired()
@@ -416,13 +392,13 @@ DeviceNode::readMsg()
 			break;
 		case MSG_TYPE_DEREG_REQ:
 			xlog(LOG_INFO, "MSG_TYPE_DEREG_REQ");
-			//TODO: Do we need to do something special if we
-			//are in TX state.
 			handleDeregistrationRequest((node_to_netsim_deregistration_req_pkt *)msgData);
-			//The medium has to delete this node so we don't deregister here,
-			//The caller will check the state and do this on return.
+			//The node will have been deleted so make sure we don't
+			//try and use any of the node's data.
 			break;
 		case MSG_TYPE_CCA_REQ:
+			xlog(LOG_INFO, "MSG_TYPE_CCA_REQ");
+			handleCcaRequest((node_to_netsim_cca_req_pkt *)msgData);
 			break;
 
 		// These aren't supported
@@ -513,7 +489,6 @@ DeviceNode::handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *d
 
 	// No need to check and stop timer as we will be destroying node
 	// which will handle this.
-	//pimpl->state = DEV_NODE_STATE_DEREGISTERING;
 	sendDeregistrationConfirm();
 
 	newState = pimpl->curState->handleDeregistrationRequest(*this);
@@ -523,9 +498,21 @@ DeviceNode::handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *d
 		pimpl->curState = newState;
 		pimpl->curState->enter(*this);
 	}
-
 }
 
+void
+DeviceNode::handleCcaRequest(node_to_netsim_cca_req_pkt *ccaReq)
+{
+	IDeviceNodeState *newState;
+
+	newState = pimpl->curState->handleCcaRequest(*this);
+	if (newState) {
+		pimpl->curState->exit(*this);
+		delete pimpl->curState;
+		pimpl->curState = newState;
+		pimpl->curState->enter(*this);
+	}
+}
 
 // _____________________________________________ HanaduDeviceNode Implementation
 

@@ -70,6 +70,7 @@ public:
 	void handleRegTimerExpired();
 	void handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCon);
 	void handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq);
+	void handleCcaRequest(node_to_netsim_cca_req_pkt *ccaReq);
 
 
 private:
