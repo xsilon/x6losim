@@ -81,7 +81,7 @@
       <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_ltvoExW7EeWQMZsnnZ3B6g" value="1"/>
     </ownedEnd>
   </packagedElement>
-  <packagedElement xmi:type="uml:StateMachine" xmi:id="_ekgpoBW9EeWQMZsnnZ3B6g" name="Physical Medium State Machine" classifierBehavior="_0VCCUBZPEeWQMZsnnZ3B6g">
+  <packagedElement xmi:type="uml:StateMachine" xmi:id="_ekgpoBW9EeWQMZsnnZ3B6g" name="Device Node State Machine" classifierBehavior="_0VCCUBZPEeWQMZsnnZ3B6g">
     <ownedBehavior xmi:type="uml:Activity" xmi:id="_0VCCUBZPEeWQMZsnnZ3B6g" name="Activity1" node="_3TA2YBZPEeWQMZsnnZ3B6g _OP8sMBZQEeWQMZsnnZ3B6g _iXwH8BZQEeWQMZsnnZ3B6g _rhiW8BZQEeWQMZsnnZ3B6g _tfClcBZQEeWQMZsnnZ3B6g _ty4HcBZQEeWQMZsnnZ3B6g _uBcu8BZQEeWQMZsnnZ3B6g _uSdmcBZQEeWQMZsnnZ3B6g _vOlQcBZQEeWQMZsnnZ3B6g _wDwk8BZQEeWQMZsnnZ3B6g _AubLcBZREeWQMZsnnZ3B6g _A_NZcBZREeWQMZsnnZ3B6g" group="_dUkh8BZQEeWQMZsnnZ3B6g _ujjWcBZQEeWQMZsnnZ3B6g _BzPecBZREeWQMZsnnZ3B6g _CHYicBZREeWQMZsnnZ3B6g _FZkr8BZREeWQMZsnnZ3B6g _F4ZV8BZREeWQMZsnnZ3B6g">
       <ownedComment xmi:type="uml:Comment" xmi:id="_I9O_8BZREeWQMZsnnZ3B6g" annotatedElement="_AubLcBZREeWQMZsnnZ3B6g">
         <body>SRC PANID == MAC PANID ||
@@ -199,16 +199,15 @@ DST SA === MAC SA</body>
       </transition>
       <transition xmi:type="uml:Transition" xmi:id="_hVPM4Bv0EeWPq9in8tgSYg" source="_dK1ioBvsEeWPq9in8tgSYg" target="_exU_UBvsEeWPq9in8tgSYg"/>
       <transition xmi:type="uml:Transition" xmi:id="_iGN94Bv0EeWPq9in8tgSYg" source="_exU_UBvsEeWPq9in8tgSYg" target="_dK1ioBvsEeWPq9in8tgSYg"/>
-      <transition xmi:type="uml:Transition" xmi:id="_lDu34Bv0EeWPq9in8tgSYg" name="receivedDeregistrationReq" source="_dK1ioBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg">
+      <transition xmi:type="uml:Transition" xmi:id="_lDu34Bv0EeWPq9in8tgSYg" name="receivedDeregistrationReq" source="_dK1ioBvsEeWPq9in8tgSYg" target="_NU9ZoBvtEeWPq9in8tgSYg">
         <effect xmi:type="uml:Activity" xmi:id="_Sm__YBwLEeWlp7FXH5k3RA" name="stop regTimer"/>
       </transition>
-      <transition xmi:type="uml:Transition" xmi:id="_lh2-UBv0EeWPq9in8tgSYg" name="receivedDeregistration" source="_exU_UBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg">
+      <transition xmi:type="uml:Transition" xmi:id="_lh2-UBv0EeWPq9in8tgSYg" name="receivedDeregistration" source="_exU_UBvsEeWPq9in8tgSYg" target="_NU9ZoBvtEeWPq9in8tgSYg">
         <effect xmi:type="uml:Activity" xmi:id="_XtTK0BwLEeWlp7FXH5k3RA" name="stop regTimer"/>
       </transition>
-      <transition xmi:type="uml:Transition" xmi:id="_mA_xYBv0EeWPq9in8tgSYg" name="receviedDeregistrationReq" source="_bc5aIBvsEeWPq9in8tgSYg" target="_goFsoBvsEeWPq9in8tgSYg">
+      <transition xmi:type="uml:Transition" xmi:id="_mA_xYBv0EeWPq9in8tgSYg" name="receviedDeregistrationReq" source="_bc5aIBvsEeWPq9in8tgSYg" target="_NU9ZoBvtEeWPq9in8tgSYg">
         <effect xmi:type="uml:Activity" xmi:id="_EI4yABv1EeWPq9in8tgSYg" name="stop regTimer"/>
       </transition>
-      <transition xmi:type="uml:Transition" xmi:id="_sSPF8Bv0EeWPq9in8tgSYg" source="_goFsoBvsEeWPq9in8tgSYg" target="_NU9ZoBvtEeWPq9in8tgSYg"/>
       <subvertex xmi:type="uml:Pseudostate" xmi:id="_i34jUBW9EeWQMZsnnZ3B6g" name="start"/>
       <subvertex xmi:type="uml:State" xmi:id="_jjXJQBW9EeWQMZsnnZ3B6g" name="Phys Medium Idle"/>
       <subvertex xmi:type="uml:State" xmi:id="_lfdCgBW9EeWQMZsnnZ3B6g" name="Packet Transmit"/>
@@ -231,7 +230,6 @@ DST SA === MAC SA</body>
       </subvertex>
       <subvertex xmi:type="uml:State" xmi:id="_dK1ioBvsEeWPq9in8tgSYg" name="Active"/>
       <subvertex xmi:type="uml:State" xmi:id="_exU_UBvsEeWPq9in8tgSYg" name="Tx"/>
-      <subvertex xmi:type="uml:State" xmi:id="_goFsoBvsEeWPq9in8tgSYg" name="Deregistering"/>
       <subvertex xmi:type="uml:Pseudostate" xmi:id="_NU9ZoBvtEeWPq9in8tgSYg" name="Close Socket and Destroy Node" kind="terminate"/>
     </region>
   </packagedElement>

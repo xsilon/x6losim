@@ -20,13 +20,24 @@
 
 // ________________________________________________________________ NetSimPacket
 
+class DeviceNode;
 class NetSimPacket
 {
 public:
+	NetSimPacket(node_to_netsim_data_ind_pkt *dataInd, DeviceNode *fromNode);
+
 	uint8_t * buf() { return pktBuffer; }
 	int bufSize() { return sizeof(pktBuffer); }
+
+
+	int getTimeOnWire()
+	{
+		//TODO: Use Tx parameters to work out the time on the wire
+		return 4;
+	}
 private:
 	uint8_t pktBuffer[NETSIM_PKT_MAX_SZ];
+	DeviceNode *fromNode;
 };
 
 typedef std::list<NetSimPacket *> NetSimPktList;
@@ -46,6 +57,7 @@ class DeviceNode_pimpl;
 class DeviceNode
 {
 friend class RegisteringState;
+friend class ActiveState;
 
 public:
 	DeviceNode(int sockfd);
@@ -54,8 +66,6 @@ public:
 	uint64_t getNodeId();
 	const char *getName();
 	int getSocketFd();
-	//DeviceNodeState getState();
-	timer_t getRegTimer();
 
 	PhysicalMedium *getMedium();
 	void setMedium(PhysicalMedium *medium);
@@ -65,12 +75,16 @@ public:
 	void readMsg();
 	void sendRegistrationRequest();
 	void sendDeregistrationConfirm();
+	void sendCcaConfirm(bool result);
+
 
 	// IDeviceNodeState implementation
 	void handleRegTimerExpired();
 	void handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCon);
 	void handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq);
 	void handleCcaRequest(node_to_netsim_cca_req_pkt *ccaReq);
+	void handleDataIndication(node_to_netsim_data_ind_pkt *dataInd);
+
 
 
 private:
@@ -82,6 +96,9 @@ private:
 
 	void startRegistrationTimer();
 	void stopRegistrationTimer();
+
+	void startTxTimer(int msTimeout);
+	void stopTxTimer();
 };
 
 class HanaduDeviceNode_pimpl;
@@ -141,12 +158,16 @@ public:
 	void stop();
 	void waitForExit();
 
+	bool isIdle();
+
 	void registerNode(DeviceNode *node);
 	void deregisterNode(DeviceNode *node);
 
+	void addNodeToCcaList(DeviceNode *node);
+
 protected:
 	void addNode(DeviceNode *node);
-
+	void processCcaList();
 private:
 	PhysicalMedium_pimpl * pimpl;
 

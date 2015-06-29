@@ -33,8 +33,7 @@ enum msg_type
 	MSG_TYPE_DEREG_CON,
 	MSG_TYPE_CCA_REQ,
 	MSG_TYPE_CCA_CON,
-	MSG_TYPE_TX_REQ,
-	MSG_TYPE_TX_CON,
+	MSG_TYPE_TX_DATA_IND,
 	MSG_TYPE_TX_DONE_IND,
 };
 
@@ -95,6 +94,20 @@ struct node_to_netsim_cca_req_pkt
 } __attribute__((__packed__ ));
 
 /*
+ * Node -> NetSim CCA Confirm.
+ *
+ * Request node's deregistration.
+ */
+struct netsim_to_node_cca_con_pkt
+{
+	struct netsim_pkt_hdr hdr;
+
+	/* 0 = channel busy, 1 = channel clear */
+	uint8_t result;
+
+} __attribute__((__packed__ ));
+
+/*
  * Node -> NetSim DeRegistration Request.
  *
  * Request node's deregistration.
@@ -106,9 +119,20 @@ struct node_to_netsim_deregistration_req_pkt
 } __attribute__((__packed__ ));
 
 /*
+ * Node -> NetSim DeRegistration Confirm.
+ *
+ * Confirm node's deregistration.
+ */
+struct netsim_to_node_deregistration_con_pkt
+{
+	struct netsim_pkt_hdr hdr;
+
+} __attribute__((__packed__ ));
+
+/*
  * We have a 128 byte header followed by the actual 802.15.4 frame.
  */
-struct node_to_netsim_data_pkt_hdr
+struct node_to_netsim_data_ind_pkt
 {
 	union data_union
 	{
@@ -121,13 +145,13 @@ struct node_to_netsim_data_pkt_hdr
 			int8_t tx_power; /* the power it was sent at */
 			uint8_t cca_mode; /* the cca mode used */
 			int8_t rssi; /* Received signal strength, set by simulator */
-		} hdr;
-		struct data_all {
+		} fields;
+		struct data_hdr_bytes {
 			char hdr_area[NETSIM_PKT_HDR_SZ];
-			char data[NETSIM_PKT_DATA_SZ];
-		} all;
+		} bytes;
 
-	};
+	} hdr;
+	char data[NETSIM_PKT_DATA_SZ];
 } __attribute__((__packed__ ));
 
 #pragma pack (pop)

@@ -256,6 +256,7 @@ public:
 	std::unordered_map<uint64_t, DeviceNode *> nodeHashMap;
 	std::unordered_map<uint64_t, DeviceNode *> regListMap;
 	std::mutex regListMapMutex;
+	std::list<DeviceNode *>ccaList;
 	pthread_t thread;
 	char * name;
 
@@ -275,6 +276,12 @@ PhysicalMedium::PhysicalMedium(const char * name, int port, clockid_t clockidToU
 PhysicalMedium::~PhysicalMedium() {
 	if (pimpl)
 		delete pimpl;
+}
+
+bool
+PhysicalMedium::isIdle()
+{
+	return (pimpl->state == IDLE);
 }
 
 void
@@ -307,6 +314,36 @@ PhysicalMedium::addNode(DeviceNode* node)
 	pimpl->regListMapMutex.lock();
 	pimpl->regListMap.insert({node->getNodeId(), node});
 	pimpl->regListMapMutex.unlock();
+}
+
+void
+PhysicalMedium::addNodeToCcaList(DeviceNode* node)
+{
+	pimpl->ccaList.push_back(node);
+}
+
+/*
+ * Iterate through CCA list responding to the CCA requests.
+ * As we are trying to model a real life physical channel we will response to
+ * all nodes on this list that the channel is either free or not.  If more
+ * than one node requests at the same time then we will return channel clear
+ * to all these nodes who will then try and transmit and this simulator will
+ * then decide that a collision has occured.
+ * CCA List will be empty once function has finished.
+ */
+void
+PhysicalMedium::processCcaList()
+{
+	std::list<DeviceNode *>::iterator iter;
+	iter = pimpl->ccaList.begin();
+	while (iter != pimpl->ccaList.end()) {
+		DeviceNode *node = *iter;
+
+		xlog(LOG_DEBUG, "%s: Processing Node ID (0x%016llx) from CCA list",
+				pimpl->name, node->getNodeId());
+		iter = pimpl->ccaList.erase(iter);
+		node->sendCcaConfirm(pimpl->state == IDLE);
+	}
 }
 
 void
@@ -466,6 +503,12 @@ PhysicalMedium::run() {
 			interval(1000);
 			if(pimpl->state == STOPPING)
 				break;
+
+			/* Process CCA List */
+			processCcaList();
+
+		} else if (pimpl->state == TX_802514_FRAME) {
+
 		}
 		/* Check for nodes that have expired registration period */
 		checkNodeRegistrationTimeout();

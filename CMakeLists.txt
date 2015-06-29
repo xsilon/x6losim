@@ -1,3 +1,16 @@
+########################################################################
+# x6losim test CMake build file.
+#
+# Linux: Generating Makefile
+#     create build/debug build/release
+#     cmake -DCMAKE_BUILD_TYPE=Release ../../
+#     cmake -DCMAKE_BUILD_TYPE=Debug ../../
+#
+# Usage:
+# 
+#
+########################################################################
+
 # The name of our project is "x6losim". CMakeLists files in this project can
 # refer to the root source directory of the project as ${x6losim_SOURCE_DIR} and
 # to the root binary directory of the project as ${x6losim_BINARY_DIR}.
@@ -21,7 +34,7 @@ INCLUDE(CTest)
 # pthreads
 FIND_PACKAGE(PThread REQUIRED)
 INCLUDE_DIRECTORIES(${PThread_INCLUDE_DIR})
-#SET(LIBS ${LIBS} ${PThread_LIBRARY})
+SET(LIBS ${LIBS} ${PThread_LIBRARY})
 
 # and google test framework
 FIND_PACKAGE(GTest REQUIRED)
@@ -62,6 +75,6 @@ ADD_EXECUTABLE (x6losim
 TARGET_LINK_LIBRARIES(x6losim ${PThread_LIBRARY} m rt ${LIBS} )
 
 # Enable Test Directory
-IF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "debug")
-    ADD_SUBDIRECTORY(test)
-ENDIF (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "debug")
+#IF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "debug")
+#    ADD_SUBDIRECTORY(test)
+#ENDIF (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "debug")

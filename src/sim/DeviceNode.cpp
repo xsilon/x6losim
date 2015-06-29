@@ -53,6 +53,14 @@ static inline uint64_t ntohll(uint64_t x)
 #define htonll ntohll
 #endif
 
+NetSimPacket::NetSimPacket(node_to_netsim_data_ind_pkt *dataInd, DeviceNode *fromNode) :
+	fromNode(fromNode)
+{
+	BUILD_BUG_ON(sizeof(pktBuffer) != sizeof(*dataInd));
+	memcpy(pktBuffer, dataInd, sizeof(pktBuffer));
+}
+
+
 class IDeviceNodeState
 {
 public:
@@ -64,8 +72,46 @@ public:
 	virtual IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node) {  return NULL; }
 	virtual IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) {  return NULL; }
 	virtual IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
-	virtual IDeviceNodeState *handleTxRequest(DeviceNode &node) { return NULL; }
+	virtual IDeviceNodeState *handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt) { return NULL; }
 };
+
+class RegisteringState : public IDeviceNodeState
+{
+public:
+	RegisteringState(DeviceNode &node)
+	{
+		node.sendRegistrationRequest();
+		/* Start registration timer */
+		node.startRegistrationTimer();
+	}
+	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
+	{
+		delete(&node);
+		return NULL;
+	}
+	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
+	{
+		throw "RegisteringState: handleTxTimerExpired";
+	}
+	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node);
+
+	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node)
+	{
+		//Deregister node (this will delete it to so ensure we return
+		//NULL to stop caller trying to use the deleted node
+		node.getMedium()->deregisterNode(&node);
+		return NULL;
+	}
+	IDeviceNodeState *handleCcaRequest(DeviceNode &node)
+	{
+		throw "RegisteringState: handleCcaRequest";
+	}
+	IDeviceNodeState *handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt)
+	{
+		throw "RegisteringState: handleTxRequest";
+	}
+};
+
 
 class ActiveState : public IDeviceNodeState
 {
@@ -92,53 +138,7 @@ public:
 		// This is where we expect to get a CCA request
 		return NULL;
 	}
-	IDeviceNodeState *handleTxRequest(DeviceNode &node)
-	{
-		//Should be in Tx State
-		throw "ActiveState: handleTxRequest";
-	}
-};
-
-class RegisteringState : public IDeviceNodeState
-{
-public:
-	RegisteringState(DeviceNode &node)
-	{
-		node.sendRegistrationRequest();
-		/* Start registration timer */
-		node.startRegistrationTimer();
-	}
-	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
-	{
-		delete(&node);
-		return NULL;
-	}
-	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
-	{
-		throw "RegisteringState: handleTxTimerExpired";
-	}
-	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
-	{
-		node.stopRegistrationTimer();
-		node.getMedium()->registerNode(&node);
-
-		return new ActiveState();
-	}
-	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node)
-	{
-		//Deregister node (this will delete it to so ensure we return
-		//NULL to stop caller trying to use the deleted node
-		node.getMedium()->deregisterNode(&node);
-		return NULL;
-	}
-	IDeviceNodeState *handleCcaRequest(DeviceNode &node)
-	{
-		throw "RegisteringState: handleCcaRequest";
-	}
-	IDeviceNodeState *handleTxRequest(DeviceNode &node)
-	{
-		throw "RegisteringState: handleTxRequest";
-	}
+	IDeviceNodeState *handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt);
 };
 
 class TxState : public IDeviceNodeState
@@ -163,14 +163,104 @@ class TxState : public IDeviceNodeState
 	{
 		throw "TxState: handleCcaRequest";
 	}
-	IDeviceNodeState *handleTxRequest(DeviceNode &node)
+	IDeviceNodeState *handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt)
 	{
-		// We are expecting the Tx Request while in this state.
-		return NULL;
+		throw "TxState: handleCcaRequest";
 	}
 };
 
+// Implementation of State functions that can't be contained in the actual class
+
+IDeviceNodeState *RegisteringState::handleRegistrationConfirm(DeviceNode &node)
+{
+	node.stopRegistrationTimer();
+	node.getMedium()->registerNode(&node);
+
+	return new ActiveState();
+}
+
+IDeviceNodeState *ActiveState::handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt)
+{
+	//Should be in Tx State
+	node.startTxTimer(dataPkt.getTimeOnWire());
+	//node.getMedium().addNodeToTxList();
+	return new TxState();
+}
+
 // ___________________________________________________ DeviceNode Implementation
+
+class DeviceNodeTimer {
+public:
+	DeviceNodeTimer(int iSec, int iNSec, int tSec, int tNSec)
+	{
+		timerSpec.it_interval.tv_sec = iSec;
+		timerSpec.it_interval.tv_nsec = iNSec;
+		timerSpec.it_value.tv_sec = tSec;
+		timerSpec.it_value.tv_nsec = tNSec;
+		memset(&sigEvent, 0, sizeof(sigEvent));
+		sigEvent.sigev_notify = SIGEV_NONE;
+		sigEvent.sigev_signo = SIGSTOP;
+		timer = NULL;
+		started = false;
+	};
+
+	void
+	start()
+	{
+		if (timer_create(NetworkSimulator::getClockId(),
+				 &sigEvent, &timer) == -1)
+			throw "DeviceNodeTimer::start: failed to create timer";
+		if (timer_settime(timer, 0, &timerSpec, NULL) == -1)
+			throw "DeviceNodeTimer::start: failed to arm timer";
+
+		started = true;
+	}
+	void
+	start(int ms)
+	{
+		timerSpec.it_value.tv_sec = ms /1000;
+		timerSpec.it_value.tv_nsec = (ms % 1000) * 1000000;
+
+		if (timer_create(NetworkSimulator::getClockId(),
+				 &sigEvent, &timer) == -1)
+			throw "DeviceNodeTimer::start: failed to create timer";
+		if (timer_settime(timer, 0, &timerSpec, NULL) == -1)
+			throw "DeviceNodeTimer::start: failed to arm timer";
+
+		started = true;
+	}
+
+	void
+	stop()
+	{
+		if (started) {
+			timer_delete(timer);
+			started = false;
+		}
+	}
+
+	bool
+	expired()
+	{
+		itimerspec ts_left;
+
+		assert (started);
+
+		if (timer_gettime(timer, &ts_left) == -1)
+			throw "DeviceNodeTimer: failed to get time";
+
+		if (ts_left.it_value.tv_sec == 0 && ts_left.it_value.tv_nsec == 0)
+			return true;
+		else
+			return false;
+
+	}
+
+	struct sigevent sigEvent;
+	timer_t timer;
+	bool started;
+	struct itimerspec timerSpec;
+};
 
 class DeviceNode_pimpl {
 public:
@@ -182,14 +272,9 @@ public:
 		 * Set signo to SIGSTOP to make the received signal obvious but
 		 * harmless.
 		 */
-		memset(&regTimerSigEvent, 0, sizeof(regTimerSigEvent));
-		regTimerSigEvent.sigev_notify = SIGEV_NONE;
-		regTimerSigEvent.sigev_signo = SIGSTOP;
-		regTimer = NULL;
 		memset(&stats, 0, sizeof(stats));
 		memset(&os, 0, sizeof(os));
 		memset(&osVersion, 0, sizeof(osVersion));
-		regTimerStarted = false;
 		medium = NULL;
 		curState = NULL;
 	}
@@ -206,28 +291,16 @@ public:
 	char osVersion[32];
 	IDeviceNodeState *curState;
 
-	static struct itimerspec regTimerSpec;
-	struct sigevent regTimerSigEvent;
-	timer_t regTimer;
-	bool regTimerStarted;
+	static DeviceNodeTimer regTimer;
+	static DeviceNodeTimer txTimer;
 
 	struct stats {
 		int failedReads;
 	} stats;
 };
 
-struct itimerspec DeviceNode_pimpl::regTimerSpec = {
-
-	.it_interval = {
-		.tv_sec =  0,
-		.tv_nsec = 0,
-	},
-	.it_value = {
-		.tv_sec = REGISTRATION_TIME,
-		.tv_nsec = 0
-	}
-};
-
+DeviceNodeTimer DeviceNode_pimpl::regTimer(0, 0, REGISTRATION_TIME, 0);
+DeviceNodeTimer DeviceNode_pimpl::txTimer(0, 0, 0, 0);
 
 DeviceNode::DeviceNode(int sockfd)
 {
@@ -260,24 +333,10 @@ DeviceNode::getSocketFd()
 	return (uint64_t)pimpl->sockfd;
 }
 
-timer_t
-DeviceNode::getRegTimer()
-{
-	return pimpl->regTimer;
-}
-
 bool
 DeviceNode::hasRegTimerExpired()
 {
-	itimerspec ts_left;
-
-	if (timer_gettime(pimpl->regTimer, &ts_left) == -1)
-		throw "PhysicalMedium::interval: failed to get timer";
-
-	if (ts_left.it_value.tv_sec == 0 && ts_left.it_value.tv_nsec == 0)
-		return true;
-	else
-		return false;
+	return pimpl->regTimer.expired();
 }
 
 void
@@ -310,10 +369,10 @@ DeviceNode::sendRegistrationRequest()
 void
 DeviceNode::sendDeregistrationConfirm()
 {
-	struct node_to_netsim_deregistration_req_pkt *msg;
+	struct netsim_to_node_deregistration_con_pkt *msg;
 	int msglen = sizeof(*msg);
 
-	msg = (node_to_netsim_deregistration_req_pkt *)malloc(msglen);
+	msg = (netsim_to_node_deregistration_con_pkt *)malloc(msglen);
 
 	msg->hdr.len = htons(sizeof(*msg));
 	msg->hdr.msg_type = htons(MSG_TYPE_DEREG_CON);
@@ -323,6 +382,29 @@ DeviceNode::sendDeregistrationConfirm()
 	assert(pimpl->socket != NULL);
 	msg->hdr.node_id = htonll((uint64_t)pimpl->socket);
 	msg->hdr.cksum = htons(generate_checksum(msg, msglen));
+
+	pimpl->socket->sendMsg((char *)msg, msglen);
+
+	free(msg);
+}
+
+void
+DeviceNode::sendCcaConfirm(bool result)
+{
+	struct netsim_to_node_cca_con_pkt *msg;
+	int msglen = sizeof(*msg);
+
+	msg = (netsim_to_node_cca_con_pkt *)malloc(msglen);
+
+	msg->hdr.len = htons(sizeof(*msg));
+	msg->hdr.msg_type = htons(MSG_TYPE_DEREG_CON);
+	msg->hdr.interface_version = htonl(NETSIM_INTERFACE_VERSION);
+	/* We'll use the virtual address of the socket instance pointer as this
+	 * is always guaranteed to be unique for each DeviceNode instance. */
+	assert(pimpl->socket != NULL);
+	msg->hdr.node_id = htonll((uint64_t)pimpl->socket);
+	msg->hdr.cksum = htons(generate_checksum(msg, msglen));
+	msg->result = result ? 1 : 0;
 
 	pimpl->socket->sendMsg((char *)msg, msglen);
 
@@ -377,7 +459,6 @@ DeviceNode::readMsg()
 		xlog(LOG_INFO, "Interface: 0x%08x\n", interfaceVersion);
 		xlog(LOG_INFO, "Node ID  : 0x%016llx\n",(long long unsigned int) nodeId);
 
-
 		if (interfaceVersion != NETSIM_INTERFACE_VERSION) {
 			xlog(LOG_WARNING, "Invalid Interface version 0x%08x != 0x%08x(received)\n",
 					NETSIM_INTERFACE_VERSION, interfaceVersion);
@@ -400,7 +481,10 @@ DeviceNode::readMsg()
 			xlog(LOG_INFO, "MSG_TYPE_CCA_REQ");
 			handleCcaRequest((node_to_netsim_cca_req_pkt *)msgData);
 			break;
-
+		case MSG_TYPE_TX_DATA_IND:
+			xlog(LOG_INFO, "MSG_TYPE_CCA_REQ");
+			handleDataIndication((node_to_netsim_data_ind_pkt *)msgData);
+			break;
 		// These aren't supported
 		case MSG_TYPE_REG_REQ:
 		case MSG_TYPE_CCA_CON:
@@ -418,14 +502,27 @@ cleanup:
 void
 DeviceNode::startRegistrationTimer()
 {
-	if (timer_create(NetworkSimulator::getClockId(),
-			 &pimpl->regTimerSigEvent,
-			 &pimpl->regTimer) == -1)
-		throw "DeviceNode::sendRegistrationRequest: failed to create timer";
-	if (timer_settime(pimpl->regTimer, 0, &pimpl->regTimerSpec, NULL) == -1)
-		throw "DeviceNode::sendRegistrationRequest: failed to arm timer";
-	pimpl->regTimerStarted = true;
+	pimpl->regTimer.start();
 }
+
+void
+DeviceNode::stopRegistrationTimer()
+{
+	pimpl->regTimer.stop();
+}
+
+void
+DeviceNode::startTxTimer(int msTimeout)
+{
+	pimpl->txTimer.start(msTimeout);
+}
+
+void
+DeviceNode::stopTxTimer()
+{
+	pimpl->txTimer.stop();
+}
+
 
 PhysicalMedium *
 DeviceNode::getMedium()
@@ -436,15 +533,6 @@ DeviceNode::getMedium()
 void
 DeviceNode::setMedium(PhysicalMedium *medium) {
 	pimpl->medium = medium;
-}
-
-void
-DeviceNode::stopRegistrationTimer()
-{
-	if (pimpl->regTimerStarted) {
-		timer_delete(pimpl->regTimer);
-		pimpl->regTimerStarted = false;
-	}
 }
 
 // ______________________________________________ DeviceNodeState Implementation
@@ -505,7 +593,27 @@ DeviceNode::handleCcaRequest(node_to_netsim_cca_req_pkt *ccaReq)
 {
 	IDeviceNodeState *newState;
 
+	/* Medium will process the CCA list and respond to this request as the
+	 * Medium class is responsible for deciding who gets access. */
+	pimpl->medium->addNodeToCcaList(this);
+
 	newState = pimpl->curState->handleCcaRequest(*this);
+	if (newState) {
+		pimpl->curState->exit(*this);
+		delete pimpl->curState;
+		pimpl->curState = newState;
+		pimpl->curState->enter(*this);
+	}
+}
+
+void
+DeviceNode::handleDataIndication(node_to_netsim_data_ind_pkt *dataInd)
+{
+	IDeviceNodeState *newState;
+	NetSimPacket * dataPkt;
+
+	dataPkt = new NetSimPacket(dataInd, this);
+	newState = pimpl->curState->handleTxRequest(*this, *dataPkt);
 	if (newState) {
 		pimpl->curState->exit(*this);
 		delete pimpl->curState;
