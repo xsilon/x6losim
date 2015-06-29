@@ -147,7 +147,16 @@ class TxState : public IDeviceNodeState
 	{
 		throw "TxState: handleCheckRegTimer";
 	}
-	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node) { return NULL; }
+	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
+	{
+		node.stopTxTimer();
+		// TODO: If there were no collisions transmit packet
+
+		// TODO: Remove node from list
+		// Clear transmitted packet
+		node.setTxPacket(NULL);
+		return new ActiveState();
+	}
 	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
 	{
 		throw "TxState: handleRegistrationConfirm";
@@ -183,7 +192,8 @@ IDeviceNodeState *ActiveState::handleTxRequest(DeviceNode &node, NetSimPacket &d
 {
 	//Should be in Tx State
 	node.startTxTimer(dataPkt.getTimeOnWire());
-	//node.getMedium().addNodeToTxList();
+	node.setTxPacket(&dataPkt);
+	node.getMedium()->addNodeToTxList(&node);
 	return new TxState();
 }
 
@@ -207,6 +217,7 @@ public:
 	void
 	start()
 	{
+		assert(!started);
 		if (timer_create(NetworkSimulator::getClockId(),
 				 &sigEvent, &timer) == -1)
 			throw "DeviceNodeTimer::start: failed to create timer";
@@ -218,6 +229,8 @@ public:
 	void
 	start(int ms)
 	{
+		assert(!started);
+
 		timerSpec.it_value.tv_sec = ms /1000;
 		timerSpec.it_value.tv_nsec = (ms % 1000) * 1000000;
 
@@ -277,6 +290,7 @@ public:
 		memset(&osVersion, 0, sizeof(osVersion));
 		medium = NULL;
 		curState = NULL;
+		txPkt = NULL;
 	}
 	~DeviceNode_pimpl()
 	{
@@ -293,6 +307,8 @@ public:
 
 	static DeviceNodeTimer regTimer;
 	static DeviceNodeTimer txTimer;
+
+	NetSimPacket *txPkt;
 
 	struct stats {
 		int failedReads;
@@ -533,6 +549,14 @@ DeviceNode::getMedium()
 void
 DeviceNode::setMedium(PhysicalMedium *medium) {
 	pimpl->medium = medium;
+}
+
+/* Use setTxPacket(NULL) to clear transmitted packet */
+void
+DeviceNode::setTxPacket(NetSimPacket *pkt)
+{
+	assert(pimpl->txPkt == NULL);
+	pimpl->txPkt = pkt;
 }
 
 // ______________________________________________ DeviceNodeState Implementation

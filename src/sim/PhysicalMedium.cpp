@@ -257,6 +257,7 @@ public:
 	std::unordered_map<uint64_t, DeviceNode *> regListMap;
 	std::mutex regListMapMutex;
 	std::list<DeviceNode *>ccaList;
+	std::list<DeviceNode *>txList;
 	pthread_t thread;
 	char * name;
 
@@ -320,6 +321,12 @@ void
 PhysicalMedium::addNodeToCcaList(DeviceNode* node)
 {
 	pimpl->ccaList.push_back(node);
+}
+
+void
+PhysicalMedium::addNodeToTxList(DeviceNode* node)
+{
+	pimpl->txList.push_back(node);
 }
 
 /*
@@ -507,7 +514,10 @@ PhysicalMedium::run() {
 			/* Process CCA List */
 			processCcaList();
 
+
+
 		} else if (pimpl->state == TX_802514_FRAME) {
+
 
 		}
 		/* Check for nodes that have expired registration period */

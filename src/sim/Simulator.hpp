@@ -58,6 +58,7 @@ class DeviceNode
 {
 friend class RegisteringState;
 friend class ActiveState;
+friend class TxState;
 
 public:
 	DeviceNode(int sockfd);
@@ -69,6 +70,8 @@ public:
 
 	PhysicalMedium *getMedium();
 	void setMedium(PhysicalMedium *medium);
+
+	void setTxPacket(NetSimPacket *pkt);
 
 	bool hasRegTimerExpired();
 
@@ -164,6 +167,7 @@ public:
 	void deregisterNode(DeviceNode *node);
 
 	void addNodeToCcaList(DeviceNode *node);
+	void addNodeToTxList(DeviceNode *node);
 
 protected:
 	void addNode(DeviceNode *node);
