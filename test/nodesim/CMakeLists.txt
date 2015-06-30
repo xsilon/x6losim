@@ -1,5 +1,6 @@
 
-ADD_EXECUTABLE (connect_no_reg_con connect_no_reg_con.c)
+#ADD_EXECUTABLE (connect_no_reg_con common.cpp connect_no_reg_con.cpp)
+#TARGET_LINK_LIBRARIES(connect_no_reg_con ${LIBS})
 
-# Specify external libraries to link to.
-TARGET_LINK_LIBRARIES(connect_no_reg_con ${LIBS})
+ADD_EXECUTABLE (TxOnePacket common.cpp TxOnePacket.cpp)
+TARGET_LINK_LIBRARIES(TxOnePacket ${LIBS})

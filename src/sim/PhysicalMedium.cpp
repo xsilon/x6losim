@@ -35,6 +35,7 @@ public:
 		int rv;
 		u_char loop;
 
+		tx.mcastsockfd = -1;
 		ev.events = EPOLLIN;
 		ev.data.ptr = &NetworkSimulator::getUnblocker();
 
@@ -111,6 +112,9 @@ public:
 		}
 
 		free(name);
+
+		if (tx.mcastsockfd != -1)
+			close(tx.mcastsockfd);
 	}
 
 	enum PhysicalMediumState state;
@@ -533,7 +537,7 @@ PhysicalMedium::deregisterNode(DeviceNode* nodeToRemove)
 
 	/* Remove from register list map, if not found then must be on node hash map. */
 	pimpl->regListMapMutex.lock();
-	n = pimpl->nodeHashMap.erase(nodeToRemove->getNodeId());
+	n = pimpl->regListMap.erase(nodeToRemove->getNodeId());
 	if (n == 1) {
 		xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from registration list map",
 				pimpl->name, nodeToRemove->getNodeId());
