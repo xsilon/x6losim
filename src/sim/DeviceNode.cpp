@@ -64,49 +64,58 @@ NetSimPacket::NetSimPacket(node_to_netsim_data_ind_pkt *dataInd, DeviceNode *fro
 class IDeviceNodeState
 {
 public:
+	IDeviceNodeState(DeviceNode *node)
+	{
+		this->node = node;
+	}
 	virtual ~IDeviceNodeState() {}
-	virtual void enter(DeviceNode &node) { }
-	virtual void exit(DeviceNode &node) { }
-	virtual IDeviceNodeState *handleRegTimerExpired(DeviceNode &node) { return NULL; }
-	virtual IDeviceNodeState *handleTxTimerExpired(DeviceNode &node) { return NULL; }
-	virtual IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node) {  return NULL; }
-	virtual IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node) {  return NULL; }
-	virtual IDeviceNodeState *handleCcaRequest(DeviceNode &node) { return NULL; }
-	virtual IDeviceNodeState *handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt) { return NULL; }
+	virtual void enter() { }
+	virtual void exit() { }
+	virtual IDeviceNodeState *handleRegTimerExpired() { return NULL; }
+	virtual IDeviceNodeState *handleTxTimerExpired() { return NULL; }
+	virtual IDeviceNodeState *handleRegistrationConfirm() {  return NULL; }
+	virtual IDeviceNodeState *handleDeregistrationRequest() {  return NULL; }
+	virtual IDeviceNodeState *handleCcaRequest() { return NULL; }
+	virtual IDeviceNodeState *handleTxRequest(NetSimPacket &dataPkt) { return NULL; }
+protected:
+	DeviceNode *node;
 };
 
 class RegisteringState : public IDeviceNodeState
 {
 public:
-	RegisteringState(DeviceNode &node)
+	RegisteringState(DeviceNode *node) : IDeviceNodeState(node)
 	{
-		node.sendRegistrationRequest();
-		/* Start registration timer */
-		node.startRegistrationTimer();
+		node->sendRegistrationRequest();
+		// Start registration timer
+		node->startRegistrationTimer();
 	}
-	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
+	IDeviceNodeState *handleRegTimerExpired()
 	{
-		delete(&node);
+		// The PhysicalMedium will have removed the node from the
+		// relevant data structures so all that's left to do is free
+		// up the node's memory.
+		delete(node);
 		return NULL;
 	}
-	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
+	IDeviceNodeState *handleTxTimerExpired()
 	{
 		throw "RegisteringState: handleTxTimerExpired";
 	}
-	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node);
+	IDeviceNodeState *handleRegistrationConfirm();
 
-	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node)
+	IDeviceNodeState *handleDeregistrationRequest()
 	{
 		//Deregister node (this will delete it to so ensure we return
 		//NULL to stop caller trying to use the deleted node
-		node.getMedium()->deregisterNode(&node);
+		node->getMedium()->deregisterNode(node);
 		return NULL;
 	}
-	IDeviceNodeState *handleCcaRequest(DeviceNode &node)
+	IDeviceNodeState *handleCcaRequest()
 	{
 		throw "RegisteringState: handleCcaRequest";
 	}
-	IDeviceNodeState *handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt)
+	IDeviceNodeState *handleTxRequest(NetSimPacket &dataPkt)
 	{
 		throw "RegisteringState: handleTxRequest";
 	}
@@ -116,63 +125,65 @@ public:
 class ActiveState : public IDeviceNodeState
 {
 public:
-	ActiveState() {}
-	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
+	ActiveState(DeviceNode *node) : IDeviceNodeState(node) {}
+	IDeviceNodeState *handleRegTimerExpired()
 	{
 		throw "ActiveState: handleCheckRegTimer";
 	}
-	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node) { return NULL; }
-	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
+	IDeviceNodeState *handleTxTimerExpired() { return NULL; }
+	IDeviceNodeState *handleRegistrationConfirm()
 	{
 		throw "ActiveState: handleRegistrationConfirm";
 	}
-	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node)
+	IDeviceNodeState *handleDeregistrationRequest()
 	{
 		//Deregister node (this will delete it to so ensure we return
 		//NULL to stop caller trying to use the deleted node
-		node.getMedium()->deregisterNode(&node);
+		node->getMedium()->deregisterNode(node);
 		return NULL;
 	}
-	IDeviceNodeState *handleCcaRequest(DeviceNode &node)
+	IDeviceNodeState *handleCcaRequest()
 	{
 		// This is where we expect to get a CCA request
 		return NULL;
 	}
-	IDeviceNodeState *handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt);
+	IDeviceNodeState *handleTxRequest(NetSimPacket &dataPkt);
 };
 
 class TxState : public IDeviceNodeState
 {
-	IDeviceNodeState *handleRegTimerExpired(DeviceNode &node)
+public:
+	TxState(DeviceNode *node) : IDeviceNodeState(node) {}
+	IDeviceNodeState *handleRegTimerExpired()
 	{
 		throw "TxState: handleCheckRegTimer";
 	}
-	IDeviceNodeState *handleTxTimerExpired(DeviceNode &node)
+	IDeviceNodeState *handleTxTimerExpired()
 	{
-		node.stopTxTimer();
+		node->stopTxTimer();
 		// TODO: If there were no collisions transmit packet
 
 		// TODO: Remove node from list
 		// Clear transmitted packet
-		node.setTxPacket(NULL);
-		return new ActiveState();
+		node->setTxPacket(NULL);
+		return new ActiveState(node);
 	}
-	IDeviceNodeState *handleRegistrationConfirm(DeviceNode &node)
+	IDeviceNodeState *handleRegistrationConfirm()
 	{
 		throw "TxState: handleRegistrationConfirm";
 	}
-	IDeviceNodeState *handleDeregistrationRequest(DeviceNode &node)
+	IDeviceNodeState *handleDeregistrationRequest()
 	{
 		//Deregister node (this will delete it to so ensure we return
 		//NULL to stop caller trying to use the deleted node
-		node.getMedium()->deregisterNode(&node);
+		node->getMedium()->deregisterNode(node);
 		return NULL;
 	}
 	IDeviceNodeState *handleCcaRequest(DeviceNode &node)
 	{
 		throw "TxState: handleCcaRequest";
 	}
-	IDeviceNodeState *handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt)
+	IDeviceNodeState *handleTxRequest(NetSimPacket &dataPkt)
 	{
 		throw "TxState: handleCcaRequest";
 	}
@@ -180,21 +191,21 @@ class TxState : public IDeviceNodeState
 
 // Implementation of State functions that can't be contained in the actual class
 
-IDeviceNodeState *RegisteringState::handleRegistrationConfirm(DeviceNode &node)
+IDeviceNodeState *RegisteringState::handleRegistrationConfirm()
 {
-	node.stopRegistrationTimer();
-	node.getMedium()->registerNode(&node);
+	node->stopRegistrationTimer();
+	node->getMedium()->registerNode(node);
 
-	return new ActiveState();
+	return new ActiveState(node);
 }
 
-IDeviceNodeState *ActiveState::handleTxRequest(DeviceNode &node, NetSimPacket &dataPkt)
+IDeviceNodeState *ActiveState::handleTxRequest(NetSimPacket &dataPkt)
 {
 	//Should be in Tx State
-	node.startTxTimer(dataPkt.getTimeOnWire());
-	node.setTxPacket(&dataPkt);
-	node.getMedium()->addNodeToTxList(&node);
-	return new TxState();
+	node->startTxTimer(dataPkt.getTimeOnWire());
+	node->setTxPacket(&dataPkt);
+	node->getMedium()->addNodeToTxList(node);
+	return new TxState(node);
 }
 
 // ___________________________________________________ DeviceNode Implementation
@@ -323,7 +334,7 @@ DeviceNode::DeviceNode(int sockfd)
 	pimpl = new DeviceNode_pimpl(sockfd);
 	pimpl->socket->setCloseOnExec(true);
 	//Put this node in registering state which will send registration req.
-	pimpl->curState = new RegisteringState(*this);
+	pimpl->curState = new RegisteringState(this);
 
 
 }
@@ -564,12 +575,12 @@ DeviceNode::setTxPacket(NetSimPacket *pkt)
 void
 DeviceNode::handleRegTimerExpired()
 {
-	IDeviceNodeState *newState = pimpl->curState->handleRegTimerExpired(*this);
+	IDeviceNodeState *newState = pimpl->curState->handleRegTimerExpired();
 	if (newState) {
-		pimpl->curState->exit(*this);
+		pimpl->curState->exit();
 		delete pimpl->curState;
 		pimpl->curState = newState;
-		pimpl->curState->enter(*this);
+		pimpl->curState->enter();
 	}
 }
 
@@ -584,14 +595,13 @@ DeviceNode::handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCo
 	strncpy(pimpl->os, regCon->os, sizeof(pimpl->os));
 	strncpy(pimpl->osVersion, regCon->os, sizeof(pimpl->osVersion));
 
-	newState = pimpl->curState->handleRegistrationConfirm(*this);
+	newState = pimpl->curState->handleRegistrationConfirm();
 	if (newState) {
-		pimpl->curState->exit(*this);
+		pimpl->curState->exit();
 		delete pimpl->curState;
 		pimpl->curState = newState;
-		pimpl->curState->enter(*this);
+		pimpl->curState->enter();
 	}
-	//TODO: Assert pimpl->state = DEV_NODE_STATE_ACTIVE;
 }
 
 void
@@ -603,12 +613,12 @@ DeviceNode::handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *d
 	// which will handle this.
 	sendDeregistrationConfirm();
 
-	newState = pimpl->curState->handleDeregistrationRequest(*this);
+	newState = pimpl->curState->handleDeregistrationRequest();
 	if (newState) {
-		pimpl->curState->exit(*this);
+		pimpl->curState->exit();
 		delete pimpl->curState;
 		pimpl->curState = newState;
-		pimpl->curState->enter(*this);
+		pimpl->curState->enter();
 	}
 }
 
@@ -621,12 +631,12 @@ DeviceNode::handleCcaRequest(node_to_netsim_cca_req_pkt *ccaReq)
 	 * Medium class is responsible for deciding who gets access. */
 	pimpl->medium->addNodeToCcaList(this);
 
-	newState = pimpl->curState->handleCcaRequest(*this);
+	newState = pimpl->curState->handleCcaRequest();
 	if (newState) {
-		pimpl->curState->exit(*this);
+		pimpl->curState->exit();
 		delete pimpl->curState;
 		pimpl->curState = newState;
-		pimpl->curState->enter(*this);
+		pimpl->curState->enter();
 	}
 }
 
@@ -637,12 +647,12 @@ DeviceNode::handleDataIndication(node_to_netsim_data_ind_pkt *dataInd)
 	NetSimPacket * dataPkt;
 
 	dataPkt = new NetSimPacket(dataInd, this);
-	newState = pimpl->curState->handleTxRequest(*this, *dataPkt);
+	newState = pimpl->curState->handleTxRequest(*dataPkt);
 	if (newState) {
-		pimpl->curState->exit(*this);
+		pimpl->curState->exit();
 		delete pimpl->curState;
 		pimpl->curState = newState;
-		pimpl->curState->enter(*this);
+		pimpl->curState->enter();
 	}
 }
 
