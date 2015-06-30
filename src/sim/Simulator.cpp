@@ -133,7 +133,7 @@ NetworkSimulator::start(void)
 		if(rv == ACCEPT_OK) {
 			/* Reset error count. */
 			errCount = 0;
-			//TODO: Create Client socket and associate with medium
+			// Create Client socket and associate with medium
 			if (hanClient != -1) {
 				HanaduDeviceNode * node = new HanaduDeviceNode(hanClient);
 				pimpl->plcMedium->addNode(node);

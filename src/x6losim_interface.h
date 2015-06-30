@@ -25,6 +25,9 @@
 #define HANADU_NODE_PORT				(11555)
 #define WIRELESS_NODE_PORT				(11556)
 
+#define HANADU_MCAST_TX_PORT				(22411)
+#define WIRELESS_MCAST_TX_PORT				(22412)
+
 enum msg_type
 {
 	MSG_TYPE_REG_REQ = 0,
@@ -152,6 +155,30 @@ struct node_to_netsim_data_ind_pkt
 
 	} hdr;
 	char data[NETSIM_PKT_DATA_SZ];
+} __attribute__((__packed__ ));
+
+
+enum tx_done_enum
+{
+	TX_DONE_OK = 0,
+	TX_DONE_COLLIDED,
+	TX_DONE_FAILURE
+};
+/*
+ * Node -> NetSim Tx Done Indication.
+ *
+ * After Tx Timer expires we send this message to inform node whether the Tx
+ * was successful or not.
+ */
+struct netsim_to_node_tx_done_ind_pkt
+{
+	struct netsim_pkt_hdr hdr;
+
+	/* 0 = tx succeeded.
+	 * 1 = collision
+	 * 2 = failed (isimulator has decided pkt is to fail ie too many errors). */
+	uint8_t result;
+
 } __attribute__((__packed__ ));
 
 #pragma pack (pop)

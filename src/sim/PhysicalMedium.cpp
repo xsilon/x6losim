@@ -10,164 +10,13 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <unordered_map>
 #include <list>
 #include <mutex>
-
-
-// TODO: Remove PacketArbitrator class once we have what we need out of it.
-#if 0
-// _____________________________________________ PacketArbitrator Implementation
-
-
-class PacketArbitrator_pimpl {
-public:
-	bool running;
-	const char * name;
-	struct {
-		pthread_t thread;
-		int sockfd;
-		int port;
-		struct sockaddr_in servaddr;
-
-		NetSimPktList pktList;
-		pthread_mutex_t pktListMutex;
-
-		struct stats {
-			uint32_t pkts_rx;
-			uint32_t pkts_ok;
-			uint32_t pkts_dropped;
-		} stats;
-	} rx;
-};
-
-PacketArbitrator::PacketArbitrator(const char * name, int port)
-{
-	pimpl = new PacketArbitrator_pimpl();
-	pimpl->name = strdup(name);
-	pimpl->rx.port = port;
-	pimpl->rx.stats.pkts_rx = 0;
-	pimpl->rx.stats.pkts_ok = 0;
-	pimpl->rx.stats.pkts_dropped = 0;
-
-	pthread_mutex_init(&pimpl->rx.pktListMutex, NULL);
-}
-
-PacketArbitrator::~PacketArbitrator()
-{
-	// @todo implement select and use a pipe to unblock socket read.
-	// under mutex free all packets in list
-	if (pimpl) {
-		if (pimpl->name)
-			free((void *)pimpl->name);
-		delete pimpl;
-	}
-}
-
-int
-PacketArbitrator::start()
-{
-	int rc;
-
-	rc = pthread_create(&pimpl->rx.thread, NULL,
-			PacketArbitrator::run_helper, (void *)this);
-
-	if (rc != 0)
-		throw "PacketArbitrator failed to start";
-
-	return 0;
-}
-
-void *
-PacketArbitrator::run()
-{
-#if 0
-	NetSimPacket *pkt;
-
-	pimpl->rx.sockfd=socket(AF_INET,SOCK_DGRAM,0);
-	if (pimpl->rx.sockfd == -1) {
-		xlog(LOG_ERR, "Server socket creation failed (%s)", strerror(errno));
-		throw "Server socket failed";
-	}
-
-	bzero(&pimpl->rx.servaddr,sizeof(pimpl->rx.servaddr));
-	pimpl->rx.servaddr.sin_family = AF_INET;
-	pimpl->rx.servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
-	pimpl->rx.servaddr.sin_port=htons(pimpl->rx.port);
-	if (bind(pimpl->rx.sockfd, (struct sockaddr *)&pimpl->rx.servaddr,
-			sizeof(pimpl->rx.servaddr)) != 0
-	) {
-		xlog(LOG_ERR, "Bind failed for Netsim server socket (%s)",
-			strerror(errno));
-		throw "Server socket failed";
-	}
-	xlog(LOG_INFO, "%s: UDP ServerSocket listening on port %d", pimpl->name,
-			pimpl->rx.port);
-
-	pimpl->running = true;
-
-	while (pimpl->running) {
-		struct sockaddr_in cliaddr;
-		socklen_t len;
-		int n;
-		struct netsim_pkt_hdr *hdr;
-
-		pkt = new NetSimPacket();
-		len = sizeof(cliaddr);
-		/* TODO: ensure we receive a full 256 byte payload */
-		n = recvfrom(pimpl->rx.sockfd, pkt->buf(), pkt->bufSize(), 0,
-					 (struct sockaddr *)&cliaddr, &len);
-
-		if (n == -1) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-				continue;
-			//@todo other ERR codes
-		} else if (n == 0) {
-			continue;
-		}
-
-		hdr = (struct netsim_pkt_hdr *)pkt->buf();
-		if (hdr->interface_version == NETSIM_INTERFACE_VERSION) {
-			pthread_mutex_lock(&pimpl->rx.pktListMutex);
-			pimpl->rx.pktList.push_back(pkt);
-			pthread_mutex_unlock(&pimpl->rx.pktListMutex);
-			xlog(LOG_INFO, "%d: Received packet %d from %s", n, pimpl->rx.stats.pkts_rx,
-				 inet_ntoa(cliaddr.sin_addr));
-
-			pimpl->rx.stats.pkts_ok++;
-		} else {
-			xlog(LOG_ERR, "%d: Dropping packet %d from %s", n, pimpl->rx.stats.pkts_rx,
-				inet_ntoa(cliaddr.sin_addr));
-			xlog(LOG_ERR, "Interface version mismatch pkt(0x%08x) != sim(0x%08x)",
-				hdr->interface_version, NETSIM_INTERFACE_VERION);
-
-			pimpl->rx.stats.pkts_dropped++;
-		}
-		pimpl->rx.stats.pkts_rx++;
-	}
-
-	close(pimpl->rx.sockfd);
-#endif
-	pthread_exit(NULL);
-}
-
-void
-PacketArbitrator::getCapturedPackets(NetSimPktList &pktList)
-{
-	std::list<NetSimPacket *>::iterator iter;
-	// Copy packets into the passed list under the mutex so other packets
-	// can't be received
-	pthread_mutex_lock(&pimpl->rx.pktListMutex);
-	for(iter = pimpl->rx.pktList.begin(); iter != pimpl->rx.pktList.end(); ) {
-		pktList.push_back(*iter);
-		iter = pimpl->rx.pktList.erase(iter);
-	}
-	pthread_mutex_unlock(&pimpl->rx.pktListMutex);
-	assert(pimpl->rx.pktList.empty());
-}
-
-#endif
 
 // _______________________________________________ PhysicalMedium Implementation
 
@@ -180,10 +29,11 @@ enum PhysicalMediumState {
 
 class PhysicalMedium_pimpl {
 public:
-	PhysicalMedium_pimpl(clockid_t clockidToUse, const char * nameIn) : clockidToUse(clockidToUse)
+	PhysicalMedium_pimpl(clockid_t clockidToUse, const char * nameIn, int mcastPort) : clockidToUse(clockidToUse)
 	{
 		struct epoll_event ev;
 		int rv;
+		u_char loop;
 
 		ev.events = EPOLLIN;
 		ev.data.ptr = &NetworkSimulator::getUnblocker();
@@ -210,6 +60,19 @@ public:
 					strerror(errno));
 			throw "PhysicalMedium_pimpl: failed to create timer";
 		}
+
+		// Create multicast socket and disable loopback as we don't want
+		// to receive the packets we have just transmitted.
+		tx.mcastsockfd=socket(AF_INET,SOCK_DGRAM,0);
+		tx.mcastport = mcastPort;
+		loop = 0;
+		setsockopt(tx.mcastsockfd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+
+		bzero(&tx.mcastGroupAddr,sizeof(tx.mcastGroupAddr));
+		tx.mcastGroupAddr.sin_family = AF_INET;
+		tx.mcastGroupAddr.sin_addr.s_addr=inet_addr("224.1.1.1");
+		tx.mcastGroupAddr.sin_port=htons(tx.mcastport);
+
 	}
 	~PhysicalMedium_pimpl()
 	{
@@ -266,12 +129,19 @@ public:
 
 		struct epoll_event events[EPOLL_MAX_EVENTS];
 	} poller;
+	struct {
+		/* outbound multicast socket */
+		int mcastsockfd;
+		int mcastport;
+		struct sockaddr_in mcastGroupAddr;
+	} tx;
 };
 
 
-PhysicalMedium::PhysicalMedium(const char * name, int port, clockid_t clockidToUse)
+PhysicalMedium::PhysicalMedium(const char * name, int port, int mcastPort, clockid_t clockidToUse)
 {
-	pimpl = new PhysicalMedium_pimpl(clockidToUse, name);
+	pimpl = new PhysicalMedium_pimpl(clockidToUse, name, mcastPort);
+
 }
 
 PhysicalMedium::~PhysicalMedium() {
@@ -323,10 +193,33 @@ PhysicalMedium::addNodeToCcaList(DeviceNode* node)
 	pimpl->ccaList.push_back(node);
 }
 
+/* This list basically indicates what node(s) is/are transmitting on the
+ * medium.   It is up to the sub class of PhysicalMedium to make the decision
+ * as to whether there are collisions or not. */
 void
 PhysicalMedium::addNodeToTxList(DeviceNode* node)
 {
 	pimpl->txList.push_back(node);
+}
+
+void
+PhysicalMedium::removeNodeFromTxList(DeviceNode *nodeIn)
+{
+	bool found = false;
+
+	std::list<DeviceNode *>::iterator iter;
+	iter = pimpl->txList.begin();
+	while (iter != pimpl->txList.end()) {
+		DeviceNode *node = *iter;
+
+		if (node == nodeIn) {
+			iter = pimpl->txList.erase(iter);
+			found = true;
+		}
+	}
+
+	assert(pimpl->state == TX_802514_FRAME);
+	assert(found);
 }
 
 /*
@@ -433,6 +326,40 @@ PhysicalMedium::checkNodeRegistrationTimeout()
 	pimpl->regListMapMutex.unlock();
 }
 
+void
+PhysicalMedium::checkNodeTxTimeout()
+{
+	std::list<DeviceNode *>::iterator iter;
+
+	/* Iterate through unreg list and remove and delete all nodes that
+	 * have timedout. */
+	iter = pimpl->txList.begin();
+	while (iter != pimpl->txList.end()) {
+		DeviceNode *node = *iter;
+
+		if (node->hasTxTimerExpired()) {
+			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from TX list",
+					pimpl->name, node->getNodeId());
+			iter = pimpl->txList.erase(iter);
+
+			//This will probably delete the node so we MUST NOT
+			//USE it afterwards
+			node->handleTxTimerExpired();
+		} else {
+			// Node not registered or timed out
+			iter++;
+		}
+	}
+}
+
+void
+PhysicalMedium::txPacket(NetSimPacket* packet)
+{
+	sendto(pimpl->tx.mcastsockfd, packet->buf(), packet->bufSize(), 0,
+		(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
+		sizeof(pimpl->tx.mcastGroupAddr));
+}
+
 /*
  * waitms: -1 for block until event occurs
  *          0 perform non blocking check
@@ -511,17 +438,38 @@ PhysicalMedium::run() {
 			if(pimpl->state == STOPPING)
 				break;
 
-			/* Process CCA List */
+			// Process CCA List
 			processCcaList();
 
+			if (!pimpl->txList.empty())
+				pimpl->state = TX_802514_FRAME;
+		}
 
+		while (!pimpl->txList.empty()) {
 
-		} else if (pimpl->state == TX_802514_FRAME) {
+			interval(1);
+			if(pimpl->state == STOPPING)
+				break;
 
+			// Process CCA List
+			processCcaList();
+
+			// Check with subclasses collision check, this needs to
+			// be done before we check timeouts as if a tx timer
+			// expires it will check for collisions and tx packet
+			// based on this.
+			txCollisionCheck();
+
+			// Go through Tx list and process timers
+			// (and potentially tx packet) */
+			checkNodeTxTimeout();
 
 		}
-		/* Check for nodes that have expired registration period */
-		checkNodeRegistrationTimeout();
+		if(pimpl->state != STOPPING) {
+			/* Check for nodes that have expired registration period */
+			pimpl->state = IDLE;
+			checkNodeRegistrationTimeout();
+		}
 	} while(pimpl->state != STOPPING);
 	xlog(LOG_NOTICE, "Network Simulator Stopped");
 	pimpl->state = STOPPED;
@@ -586,6 +534,8 @@ PhysicalMedium::deregisterNode(DeviceNode* nodeToRemove)
 	assert(nodeRemoved);
 }
 
+
+
 // ______________________________________________ PowerlineMedium Implementation
 
 void
@@ -599,6 +549,14 @@ PowerlineMedium::removeNode(HanaduDeviceNode* node)
 {
 	PhysicalMedium::deregisterNode(node);
 }
+
+void
+PowerlineMedium::txCollisionCheck()
+{
+
+}
+
+
 
 // _______________________________________________ WirelessMedium Implementation
 
@@ -614,3 +572,8 @@ WirelessMedium::removeNode(WirelessDeviceNode* node)
 	PhysicalMedium::deregisterNode(node);
 }
 
+void
+WirelessMedium::txCollisionCheck()
+{
+
+}

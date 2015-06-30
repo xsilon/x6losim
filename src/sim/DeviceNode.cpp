@@ -58,6 +58,7 @@ NetSimPacket::NetSimPacket(node_to_netsim_data_ind_pkt *dataInd, DeviceNode *fro
 {
 	BUILD_BUG_ON(sizeof(pktBuffer) != sizeof(*dataInd));
 	memcpy(pktBuffer, dataInd, sizeof(pktBuffer));
+	collision = false;
 }
 
 
@@ -130,7 +131,10 @@ public:
 	{
 		throw "ActiveState: handleCheckRegTimer";
 	}
-	IDeviceNodeState *handleTxTimerExpired() { return NULL; }
+	IDeviceNodeState *handleTxTimerExpired()
+	{
+		throw "ActiveState: handleTxTimerExpired";
+	}
 	IDeviceNodeState *handleRegistrationConfirm()
 	{
 		throw "ActiveState: handleRegistrationConfirm";
@@ -160,10 +164,21 @@ public:
 	}
 	IDeviceNodeState *handleTxTimerExpired()
 	{
-		node->stopTxTimer();
-		// TODO: If there were no collisions transmit packet
+		NetSimPacket *pkt = node->getTxPacket();
+		assert(pkt);
+		int result = TX_DONE_OK;
 
-		// TODO: Remove node from list
+		node->stopTxTimer();
+		// TODO: Need to check if simulator has decided packet is to fail.
+		if (!pkt->hasCollided()) {
+			node->getMedium()->txPacket(pkt);
+		} else {
+			result = TX_DONE_COLLIDED;
+		}
+		node->sendTxDoneIndication(result);
+
+		// Remove node from tx list
+		node->getMedium()->removeNodeFromTxList(node);
 		// Clear transmitted packet
 		node->setTxPacket(NULL);
 		return new ActiveState(node);
@@ -366,6 +381,13 @@ DeviceNode::hasRegTimerExpired()
 	return pimpl->regTimer.expired();
 }
 
+bool
+DeviceNode::hasTxTimerExpired()
+{
+	return pimpl->txTimer.expired();
+}
+
+
 void
 DeviceNode::sendRegistrationRequest()
 {
@@ -428,21 +450,50 @@ DeviceNode::sendCcaConfirm(bool result)
 	msg = (netsim_to_node_cca_con_pkt *)malloc(msglen);
 
 	msg->hdr.len = htons(sizeof(*msg));
-	msg->hdr.msg_type = htons(MSG_TYPE_DEREG_CON);
+	msg->hdr.msg_type = htons(MSG_TYPE_CCA_CON);
 	msg->hdr.interface_version = htonl(NETSIM_INTERFACE_VERSION);
 	/* We'll use the virtual address of the socket instance pointer as this
 	 * is always guaranteed to be unique for each DeviceNode instance. */
 	assert(pimpl->socket != NULL);
 	msg->hdr.node_id = htonll((uint64_t)pimpl->socket);
+	msg->result = result ? 1 : 0;
+
 	/* We must blank out the checksum field before running checksum calc. */
 	msg->hdr.cksum = 0;
 	msg->hdr.cksum = htons(generate_checksum(msg, msglen));
-	msg->result = result ? 1 : 0;
 
 	pimpl->socket->sendMsg((char *)msg, msglen);
 
 	free(msg);
 }
+
+void
+DeviceNode::sendTxDoneIndication(int result)
+{
+	struct netsim_to_node_tx_done_ind_pkt *msg;
+	int msglen = sizeof(*msg);
+
+	msg = (netsim_to_node_tx_done_ind_pkt *)malloc(msglen);
+
+	msg->hdr.len = htons(sizeof(*msg));
+	msg->hdr.msg_type = htons(MSG_TYPE_TX_DONE_IND);
+	msg->hdr.interface_version = htonl(NETSIM_INTERFACE_VERSION);
+	/* We'll use the virtual address of the socket instance pointer as this
+	 * is always guaranteed to be unique for each DeviceNode instance. */
+	assert(pimpl->socket != NULL);
+	msg->hdr.node_id = htonll((uint64_t)pimpl->socket);
+	msg->result = (uint8_t)result;
+
+	/* We must blank out the checksum field before running checksum calc. */
+	msg->hdr.cksum = 0;
+	msg->hdr.cksum = htons(generate_checksum(msg, msglen));
+
+	pimpl->socket->sendMsg((char *)msg, msglen);
+
+	free(msg);
+
+}
+
 
 void
 DeviceNode::readMsg()
@@ -568,7 +619,6 @@ DeviceNode::stopTxTimer()
 	pimpl->txTimer.stop();
 }
 
-
 PhysicalMedium *
 DeviceNode::getMedium()
 {
@@ -578,6 +628,12 @@ DeviceNode::getMedium()
 void
 DeviceNode::setMedium(PhysicalMedium *medium) {
 	pimpl->medium = medium;
+}
+
+NetSimPacket *
+DeviceNode::getTxPacket()
+{
+	return pimpl->txPkt;
 }
 
 /* Use setTxPacket(NULL) to clear transmitted packet */
@@ -594,6 +650,18 @@ void
 DeviceNode::handleRegTimerExpired()
 {
 	IDeviceNodeState *newState = pimpl->curState->handleRegTimerExpired();
+	if (newState) {
+		pimpl->curState->exit();
+		delete pimpl->curState;
+		pimpl->curState = newState;
+		pimpl->curState->enter();
+	}
+}
+
+void
+DeviceNode::handleTxTimerExpired()
+{
+	IDeviceNodeState *newState = pimpl->curState->handleTxTimerExpired();
 	if (newState) {
 		pimpl->curState->exit();
 		delete pimpl->curState;

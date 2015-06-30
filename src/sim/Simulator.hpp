@@ -35,9 +35,19 @@ public:
 		//TODO: Use Tx parameters to work out the time on the wire
 		return 4;
 	}
+
+	bool hasCollided()
+	{
+		return collision;
+	}
+	void setCollided(bool val)
+	{
+		collision = val;
+	}
 private:
 	uint8_t pktBuffer[NETSIM_PKT_MAX_SZ];
 	DeviceNode *fromNode;
+	bool collision;
 };
 
 typedef std::list<NetSimPacket *> NetSimPktList;
@@ -71,24 +81,26 @@ public:
 	PhysicalMedium *getMedium();
 	void setMedium(PhysicalMedium *medium);
 
+	NetSimPacket * getTxPacket();
 	void setTxPacket(NetSimPacket *pkt);
 
 	bool hasRegTimerExpired();
+	bool hasTxTimerExpired();
 
 	void readMsg();
 	void sendRegistrationRequest();
 	void sendDeregistrationConfirm();
 	void sendCcaConfirm(bool result);
+	void sendTxDoneIndication(int result);
 
 
 	// IDeviceNodeState implementation
 	void handleRegTimerExpired();
+	void handleTxTimerExpired();
 	void handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCon);
 	void handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq);
 	void handleCcaRequest(node_to_netsim_cca_req_pkt *ccaReq);
 	void handleDataIndication(node_to_netsim_data_ind_pkt *dataInd);
-
-
 
 private:
 	DeviceNode_pimpl * pimpl;
@@ -125,37 +137,14 @@ private:
 };
 
 
-
-class PacketArbitrator_pimpl;
-class PacketArbitrator
-{
-public:
-	PacketArbitrator(const char * name, int port);
-	virtual ~PacketArbitrator();
-
-	int start();
-	void *run();
-
-	// This will get the current pkt list that has been filled and switch t
-	void getCapturedPackets(NetSimPktList &pktList);
-private:
-	static void *run_helper(void * thisarg) {
-		return ((PacketArbitrator *)thisarg)->run();
-	}
-	PacketArbitrator_pimpl * pimpl;
-};
-
-
-
 // _____________________________________________________ Physical Medium classes
 
 class PhysicalMedium_pimpl;
 class PhysicalMedium
 {
 public:
-	PhysicalMedium(const char * name, int port, clockid_t clockidToUse);
+	PhysicalMedium(const char * name, int port, int mcastPort, clockid_t clockidToUse);
 	virtual ~PhysicalMedium();
-	void startPacketArbitrator();
 
 	int start();
 	void stop();
@@ -168,15 +157,21 @@ public:
 
 	void addNodeToCcaList(DeviceNode *node);
 	void addNodeToTxList(DeviceNode *node);
+	void removeNodeFromTxList(DeviceNode *nodeIn);
+
+	void txPacket(NetSimPacket *packet);
 
 protected:
 	void addNode(DeviceNode *node);
 	void processCcaList();
+	virtual void txCollisionCheck() = 0;
+
 private:
 	PhysicalMedium_pimpl * pimpl;
 
 	void processPollerEvents(int numEvents);
 	void checkNodeRegistrationTimeout();
+	void checkNodeTxTimeout();
 
 	void interval(int waitms);
 	void * run();
@@ -194,13 +189,14 @@ class PowerlineMedium : public PhysicalMedium
 {
 public:
 	PowerlineMedium(int port, clockid_t clockidToUse) :
-		PhysicalMedium("PLC", port, clockidToUse)
+		PhysicalMedium("PLC", port, HANADU_MCAST_TX_PORT, clockidToUse)
 	{
-
 	}
 
 	void addNode(HanaduDeviceNode *node);
 	void removeNode(HanaduDeviceNode *node);
+protected:
+	void txCollisionCheck();
 
 };
 
@@ -208,13 +204,15 @@ class WirelessMedium : public PhysicalMedium
 {
 public:
 	WirelessMedium(int port, clockid_t clockidToUse) :
-		PhysicalMedium("AIR", port, clockidToUse)
+		PhysicalMedium("AIR", port, WIRELESS_MCAST_TX_PORT, clockidToUse)
 	{
 
 	}
 
 	void addNode(WirelessDeviceNode *node);
 	void removeNode(WirelessDeviceNode *node);
+protected:
+	void txCollisionCheck();
 };
 
 

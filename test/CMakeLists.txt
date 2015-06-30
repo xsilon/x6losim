@@ -1,5 +1,6 @@
 
 SET(LIBS ${LIBS} ${PThread_LIBRARY})
 
+ADD_SUBDIRECTORY(nodesim)
 #ADD_SUBDIRECTORY(unittest)
-ADD_SUBDIRECTORY(systemtest)
+#ADD_SUBDIRECTORY(systemtest)

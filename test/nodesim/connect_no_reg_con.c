@@ -1,6 +1,7 @@
 #include "x6losim_interface.h"
 
 #include <stdlib.h>
+#include <assert.h>
 #include <byteswap.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -85,8 +86,10 @@ main()
 {
 	struct sockaddr_in serv_addr;
 	int  sockfd;
+	int n;
 	char *server_reply[128];
 	struct netsim_pkt_hdr *hdr = (struct netsim_pkt_hdr *)server_reply;
+	uint16_t cksum,calculated_cksum;
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if(sockfd < 0) {
@@ -107,16 +110,21 @@ main()
 
 	printf("Connected to Hanadu NetSim Server\n");
 	//Receive a reply from the server
-	if(recv(sockfd , server_reply , 128 , 0) < 0) {
+	if((n = recv(sockfd , server_reply , 128 , 0)) < 0) {
 		printf("recv failed");
 		exit(EXIT_FAILURE);
 	}
-
-	printf("Msg Len  : %u\n", hdr->len);
-	printf("Msg Type : %u\n", hdr->msg_type);
-	printf("Interface: 0x%08x\n", hdr->interface_version);
-	printf("Node ID  : 0x%016llx\n",(long long unsigned int) hdr->node_id);
-
+	/* Registration Request */
+	printf("Msg Len  : %u\n", ntohs(hdr->len));
+	printf("Msg Type : %u\n", ntohl(hdr->msg_type));
+	printf("Interface: 0x%08x\n", ntohl(hdr->interface_version));
+	printf("Node ID  : 0x%016llx\n",(long long unsigned int) ntohll(hdr->node_id));
+	cksum = ntohs(hdr->cksum);
+	hdr->cksum = 0;
+	calculated_cksum = generate_checksum(hdr, n);
+	printf("Rx CkSUM : 0x%04x\n", cksum);
+	printf("CkSUM    : 0x%04x\n", calculated_cksum);
+	assert(calculated_cksum == cksum);
 	send_reg_confirm(sockfd, ntohll(hdr->node_id));
 
 	sleep (3);
@@ -151,7 +159,7 @@ main()
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Connected to Hanadu HetSim Server\n");
+	printf("Connected to Hanadu NetSim Server\n");
 	//Receive a reply from the server
 	if(recv(sockfd , server_reply , 128 , 0) < 0) {
 		printf("recv failed");
