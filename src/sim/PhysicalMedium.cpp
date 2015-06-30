@@ -73,6 +73,8 @@ public:
 		tx.mcastGroupAddr.sin_addr.s_addr=inet_addr("224.1.1.1");
 		tx.mcastGroupAddr.sin_port=htons(tx.mcastport);
 
+		tx.nextTxPkt = NULL;
+
 	}
 	~PhysicalMedium_pimpl()
 	{
@@ -134,6 +136,8 @@ public:
 		int mcastsockfd;
 		int mcastport;
 		struct sockaddr_in mcastGroupAddr;
+
+		NetSimPacket *nextTxPkt;
 	} tx;
 };
 
@@ -353,11 +357,24 @@ PhysicalMedium::checkNodeTxTimeout()
 }
 
 void
-PhysicalMedium::txPacket(NetSimPacket* packet)
+PhysicalMedium::setPktForTransmission(NetSimPacket *packet)
 {
-	sendto(pimpl->tx.mcastsockfd, packet->buf(), packet->bufSize(), 0,
-		(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
-		sizeof(pimpl->tx.mcastGroupAddr));
+	// This assert validates that we don't get 2 nodes thinking they can
+	// transmit at the same time.
+	assert(pimpl->tx.nextTxPkt == NULL);
+	pimpl->tx.nextTxPkt = packet;
+}
+
+void
+PhysicalMedium::txPacket()
+{
+	if (pimpl->tx.nextTxPkt) {
+		sendto(pimpl->tx.mcastsockfd, pimpl->tx.nextTxPkt->buf(),
+			pimpl->tx.nextTxPkt->bufSize(), 0,
+			(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
+			sizeof(pimpl->tx.mcastGroupAddr));
+		pimpl->tx.nextTxPkt = NULL;
+	}
 }
 
 /*
@@ -456,13 +473,15 @@ PhysicalMedium::run() {
 
 			// Check with subclasses collision check, this needs to
 			// be done before we check timeouts as if a tx timer
-			// expires it will check for collisions and tx packet
-			// based on this.
+			// expires it will check for collisions and arm the
+			// next packet to tx member variable.
 			txCollisionCheck();
 
 			// Go through Tx list and process timers
-			// (and potentially tx packet) */
 			checkNodeTxTimeout();
+
+			// Check to see if there is a packet for transmission.
+			txPacket();
 
 		}
 		if(pimpl->state != STOPPING) {

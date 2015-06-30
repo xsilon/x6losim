@@ -159,7 +159,8 @@ public:
 	void addNodeToTxList(DeviceNode *node);
 	void removeNodeFromTxList(DeviceNode *nodeIn);
 
-	void txPacket(NetSimPacket *packet);
+	void setPktForTransmission(NetSimPacket *packet);
+	void txPacket();
 
 protected:
 	void addNode(DeviceNode *node);

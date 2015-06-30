@@ -171,7 +171,7 @@ public:
 		node->stopTxTimer();
 		// TODO: Need to check if simulator has decided packet is to fail.
 		if (!pkt->hasCollided()) {
-			node->getMedium()->txPacket(pkt);
+			node->getMedium()->setPktForTransmission(pkt);
 		} else {
 			result = TX_DONE_COLLIDED;
 		}
