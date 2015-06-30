@@ -382,6 +382,8 @@ DeviceNode::sendRegistrationRequest()
 	 * is always guaranteed to be unique for each DeviceNode instance. */
 	assert(pimpl->socket != NULL);
 	msg->hdr.node_id = htonll((uint64_t)pimpl->socket);
+	/* We must blank out the checksum field before running checksum calc. */
+	msg->hdr.cksum = 0;
 	msg->hdr.cksum = htons(generate_checksum(msg, msglen));
 
 	/* Send registration request message, on return the caller will add
@@ -408,6 +410,8 @@ DeviceNode::sendDeregistrationConfirm()
 	 * is always guaranteed to be unique for each DeviceNode instance. */
 	assert(pimpl->socket != NULL);
 	msg->hdr.node_id = htonll((uint64_t)pimpl->socket);
+	/* We must blank out the checksum field before running checksum calc. */
+	msg->hdr.cksum = 0;
 	msg->hdr.cksum = htons(generate_checksum(msg, msglen));
 
 	pimpl->socket->sendMsg((char *)msg, msglen);
@@ -430,6 +434,8 @@ DeviceNode::sendCcaConfirm(bool result)
 	 * is always guaranteed to be unique for each DeviceNode instance. */
 	assert(pimpl->socket != NULL);
 	msg->hdr.node_id = htonll((uint64_t)pimpl->socket);
+	/* We must blank out the checksum field before running checksum calc. */
+	msg->hdr.cksum = 0;
 	msg->hdr.cksum = htons(generate_checksum(msg, msglen));
 	msg->result = result ? 1 : 0;
 
