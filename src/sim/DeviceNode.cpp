@@ -466,6 +466,7 @@ DeviceNode::readMsg()
 		uint16_t msgType;
 		uint32_t interfaceVersion;
 		uint64_t nodeId;
+		uint16_t rxCksum, calculatedCksum;
 		struct netsim_pkt_hdr *hdr;
 
 		assert(rv == sizeof(len));
@@ -481,6 +482,18 @@ DeviceNode::readMsg()
 			goto cleanup;
 		}
 		hdr = (struct netsim_pkt_hdr *)msgData;
+		// Check checksum, need to reset cksum to 0 and fill in message
+		// length first.
+		rxCksum = ntohs(hdr->cksum);
+		hdr->cksum = 0;
+		hdr->len = htons(len);
+		calculatedCksum = generate_checksum(msgData, len);
+		if (calculatedCksum != rxCksum) {
+			xlog(LOG_WARNING, "Invalid Checksum (0x%04x != 0x%04x)",
+				calculatedCksum, rxCksum);
+			goto cleanup;
+		}
+
 		msgType = ntohs(hdr->msg_type);
 		interfaceVersion = ntohl(hdr->interface_version);
 		nodeId = ntohll(hdr->node_id);
@@ -498,7 +511,6 @@ DeviceNode::readMsg()
 			goto cleanup;
 		}
 
-		// TODO: Check checksum
 		switch(msgType) {
 		case MSG_TYPE_REG_CON:
 			xlog(LOG_INFO, "MSG_TYPE_REG_CON");
