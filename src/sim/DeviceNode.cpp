@@ -63,6 +63,11 @@ NetSimPacket::NetSimPacket(netsim_data_ind_pkt *dataInd, DeviceNode *fromNode) :
 	collision = false;
 }
 
+NetSimPacket::~NetSimPacket()
+{
+	free(pktBuffer);
+}
+
 
 class IDeviceNodeState
 {
@@ -179,8 +184,8 @@ public:
 		}
 		node->sendTxDoneIndication(result);
 
-		// Remove node from tx list
-		node->getMedium()->removeNodeFromTxList(node);
+		// The physical medium will remove the node from the Tx List.
+
 		// Clear transmitted packet
 		node->setTxPacket(NULL);
 		return new ActiveState(node);
@@ -389,7 +394,6 @@ DeviceNode::hasTxTimerExpired()
 	return pimpl->txTimer.expired();
 }
 
-
 void
 DeviceNode::sendRegistrationRequest()
 {
@@ -495,7 +499,6 @@ DeviceNode::sendTxDoneIndication(int result)
 	free(msg);
 
 }
-
 
 void
 DeviceNode::readMsg()
@@ -642,7 +645,6 @@ DeviceNode::getTxPacket()
 void
 DeviceNode::setTxPacket(NetSimPacket *pkt)
 {
-	assert(pimpl->txPkt == NULL);
 	pimpl->txPkt = pkt;
 }
 

@@ -25,6 +25,7 @@ class NetSimPacket
 {
 public:
 	NetSimPacket(netsim_data_ind_pkt *dataInd, DeviceNode *fromNode);
+	virtual ~NetSimPacket();
 
 	uint8_t * buf() { return pktBuffer; }
 	size_t bufSize() { return pktBufferLen; }
@@ -47,6 +48,11 @@ public:
 	void setRSSI(int8_t rssi)
 	{
 		((netsim_data_ind_pkt *)pktBuffer)->rssi = rssi;
+	}
+
+	DeviceNode *getFromNode()
+	{
+		return fromNode;
 	}
 private:
 	size_t pktBufferLen;

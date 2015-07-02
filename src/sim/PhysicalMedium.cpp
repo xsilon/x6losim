@@ -353,6 +353,7 @@ PhysicalMedium::checkNodeTxTimeout()
 			//This will probably delete the node so we MUST NOT
 			//USE it afterwards
 			node->handleTxTimerExpired();
+
 		} else {
 			// Node not registered or timed out
 			iter++;
@@ -372,19 +373,20 @@ PhysicalMedium::setPktForTransmission(NetSimPacket *packet)
 void
 PhysicalMedium::txPacket()
 {
-	if (pimpl->tx.nextTxPkt) {
-		//TODO: Fill in RSSI, for now set it to 127
-		pimpl->tx.nextTxPkt->setRSSI(127);
+	assert (pimpl->tx.nextTxPkt);
 
+	//TODO: Fill in RSSI, for now set it to 127
+	xlog(LOG_DEBUG, "%s: Node (0x%016llx) transmitting packet",
+			pimpl->name, pimpl->tx.nextTxPkt->getFromNode());
+	pimpl->tx.nextTxPkt->setRSSI(127);
 
-		sendto(pimpl->tx.mcastsockfd, pimpl->tx.nextTxPkt->buf(),
-			pimpl->tx.nextTxPkt->bufSize(), 0,
-			(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
-			sizeof(pimpl->tx.mcastGroupAddr));
+	sendto(pimpl->tx.mcastsockfd, pimpl->tx.nextTxPkt->buf(),
+		pimpl->tx.nextTxPkt->bufSize(), 0,
+		(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
+		sizeof(pimpl->tx.mcastGroupAddr));
 
-		delete pimpl->tx.nextTxPkt;
-		pimpl->tx.nextTxPkt = NULL;
-	}
+	delete pimpl->tx.nextTxPkt;
+	pimpl->tx.nextTxPkt = NULL;
 }
 
 /*
