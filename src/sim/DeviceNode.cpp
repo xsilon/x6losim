@@ -53,11 +53,13 @@ static inline uint64_t ntohll(uint64_t x)
 #define htonll ntohll
 #endif
 
-NetSimPacket::NetSimPacket(node_to_netsim_data_ind_pkt *dataInd, DeviceNode *fromNode) :
+NetSimPacket::NetSimPacket(netsim_data_ind_pkt *dataInd, DeviceNode *fromNode) :
 	fromNode(fromNode)
 {
-	BUILD_BUG_ON(sizeof(pktBuffer) != sizeof(*dataInd));
-	memcpy(pktBuffer, dataInd, sizeof(pktBuffer));
+	pktBufferLen = ntohs(dataInd->psdu_len) + sizeof(*dataInd) - 1;
+
+	pktBuffer = (uint8_t *)malloc(pktBufferLen);
+	memcpy(pktBuffer, dataInd, pktBufferLen);
 	collision = false;
 }
 
@@ -579,7 +581,7 @@ DeviceNode::readMsg()
 			break;
 		case MSG_TYPE_TX_DATA_IND:
 			xlog(LOG_INFO, "MSG_TYPE_CCA_REQ");
-			handleDataIndication((node_to_netsim_data_ind_pkt *)msgData);
+			handleDataIndication((netsim_data_ind_pkt *)msgData);
 			break;
 		// These aren't supported
 		case MSG_TYPE_REG_REQ:
@@ -727,7 +729,7 @@ DeviceNode::handleCcaRequest(node_to_netsim_cca_req_pkt *ccaReq)
 }
 
 void
-DeviceNode::handleDataIndication(node_to_netsim_data_ind_pkt *dataInd)
+DeviceNode::handleDataIndication(netsim_data_ind_pkt *dataInd)
 {
 	IDeviceNodeState *newState;
 	NetSimPacket * dataPkt;

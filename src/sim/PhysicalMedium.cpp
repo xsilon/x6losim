@@ -373,10 +373,16 @@ void
 PhysicalMedium::txPacket()
 {
 	if (pimpl->tx.nextTxPkt) {
+		//TODO: Fill in RSSI, for now set it to 127
+		pimpl->tx.nextTxPkt->setRSSI(127);
+
+
 		sendto(pimpl->tx.mcastsockfd, pimpl->tx.nextTxPkt->buf(),
 			pimpl->tx.nextTxPkt->bufSize(), 0,
 			(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
 			sizeof(pimpl->tx.mcastGroupAddr));
+
+		delete pimpl->tx.nextTxPkt;
 		pimpl->tx.nextTxPkt = NULL;
 	}
 }

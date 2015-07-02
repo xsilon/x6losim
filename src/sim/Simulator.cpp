@@ -261,8 +261,8 @@ NetworkSimulator::acceptConnections(int *hanClient, int *airClient) {
 					/* This shouldn't block as the select will have already informed us
 					 * that a connection is waiting. */
 					*hanClient = accept(pimpl->hanServer->getSockFd(), NULL, NULL);
-					/* @todo check for EWOULDBLOCK, shouldn't happen though. */
 					if (*hanClient < 0) {
+						assert(*hanClient != EWOULDBLOCK);
 						xlog(LOG_ERR,
 						    "Failed to accept hanadu client connection (%s)",
 						    strerror(errno));
@@ -278,8 +278,8 @@ NetworkSimulator::acceptConnections(int *hanClient, int *airClient) {
 					/* This shouldn't block as the select will have already informed us
 					 * that a connection is waiting. */
 					*airClient = accept(pimpl->airServer->getSockFd(), NULL, NULL);
-					/* @todo check for EWOULDBLOCK, shouldn't happen though. */
 					if (*airClient < 0) {
+						assert(*hanClient != EWOULDBLOCK);
 						xlog(LOG_ERR,
 						    "Failed to accept wireless client connection (%s)",
 						    strerror(errno));

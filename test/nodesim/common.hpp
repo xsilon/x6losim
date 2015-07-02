@@ -36,7 +36,8 @@ public:
 	void sendRegCon();
 	void sendDeregReq();
 	void sendCcaReq();
-	void sendTxDataInd();
+	void sendTxDataInd(uint64_t sourceAddr, uint16_t psduLen,
+			   uint8_t repCode, int8_t txPower, uint8_t ccaMode);
 
 	void readMsg();
 private:

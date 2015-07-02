@@ -135,26 +135,18 @@ struct netsim_to_node_deregistration_con_pkt
 /*
  * We have a 128 byte header followed by the actual 802.15.4 frame.
  */
-struct node_to_netsim_data_ind_pkt
+struct netsim_data_ind_pkt
 {
-	union data_union
-	{
-		struct data_hdr {
-			struct netsim_pkt_hdr hdr;
+	struct netsim_pkt_hdr hdr;
 
-			uint8_t source_addr[8];
-			uint16_t psdu_len; /* length of the actual 802.15.4 frame after this hdr */
-			uint8_t rep_code; /* the repitition code it was sent at */
-			int8_t tx_power; /* the power it was sent at */
-			uint8_t cca_mode; /* the cca mode used */
-			int8_t rssi; /* Received signal strength, set by simulator */
-		} fields;
-		struct data_hdr_bytes {
-			char hdr_area[NETSIM_PKT_HDR_SZ];
-		} bytes;
+	uint64_t source_addr;
+	uint16_t psdu_len; /* length of the actual 802.15.4 frame after this hdr */
+	uint8_t rep_code; /* the repitition code it was sent at */
+	int8_t tx_power; /* the power it was sent at */
+	uint8_t cca_mode; /* the cca mode used */
+	int8_t rssi; /* Received signal strength, set by simulator */
 
-	} hdr;
-	char data[NETSIM_PKT_DATA_SZ];
+	char pktData[1];
 } __attribute__((__packed__ ));
 
 

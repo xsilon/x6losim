@@ -29,6 +29,8 @@
 							<tool id="org.eclipse.linuxtools.cdt.autotools.core.toolchain.tool.gcc.1660301798" name="GCC C Compiler" superClass="org.eclipse.linuxtools.cdt.autotools.core.toolchain.tool.gcc">
 								<option id="gnu.c.compiler.option.include.paths.1024691796" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/x6losim/src/sim}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/x6losim/test/nodesim}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/x6losim/test}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1314927574" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__cplusplus=201103L"/>
@@ -73,6 +75,8 @@
 							<tool id="org.eclipse.linuxtools.cdt.autotools.core.toolchain.tool.gcc.1109423746" name="GCC C Compiler" superClass="org.eclipse.linuxtools.cdt.autotools.core.toolchain.tool.gcc">
 								<option id="gnu.c.compiler.option.include.paths.91891801" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/x6losim/src/sim}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/x6losim/test/nodesim}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/x6losim/test}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1218706569" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__cplusplus=201103L"/>
@@ -84,6 +88,7 @@
 					</folderInfo>
 					<sourceEntries>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="test"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -94,12 +99,6 @@
 		<project id="x6losim.org.eclipse.linuxtools.cdt.autotools.core.projectType.47296336" name="GNU Autotools" projectType="org.eclipse.linuxtools.cdt.autotools.core.projectType"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
-	<storageModule moduleId="scannerConfiguration">
-		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="org.eclipse.linuxtools.cdt.autotools.core.configuration.build.258852875;org.eclipse.linuxtools.cdt.autotools.core.configuration.build.258852875.;org.eclipse.linuxtools.cdt.autotools.core.toolchain.tool.gcc.1660301798;cdt.managedbuild.tool.gnu.c.compiler.input.630540845">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-	</storageModule>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="Debug"/>
 		<configuration configurationName="Build (GNU)">
@@ -478,5 +477,14 @@
 				<runAllBuilders>false</runAllBuilders>
 			</target>
 		</buildTargets>
+	</storageModule>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="org.eclipse.linuxtools.cdt.autotools.core.configuration.build.258852875.1964313193;org.eclipse.linuxtools.cdt.autotools.core.configuration.build.258852875.1964313193.;org.eclipse.linuxtools.cdt.autotools.core.toolchain.tool.gcc.1109423746;cdt.managedbuild.tool.gnu.c.compiler.input.713936889">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="org.eclipse.linuxtools.cdt.autotools.core.configuration.build.258852875;org.eclipse.linuxtools.cdt.autotools.core.configuration.build.258852875.;org.eclipse.linuxtools.cdt.autotools.core.toolchain.tool.gcc.1660301798;cdt.managedbuild.tool.gnu.c.compiler.input.630540845">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
 	</storageModule>
 </cproject>

@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 uint16_t
 generate_checksum(void *msg, int msglen)
@@ -123,24 +124,36 @@ void NodeSim::sendCcaReq()
 
 }
 
-void NodeSim::sendTxDataInd()
+void NodeSim::sendTxDataInd(uint64_t sourceAddr, uint16_t psduLen,
+			    uint8_t repCode, int8_t txPower, uint8_t ccaMode)
 {
-#ifdef TODO
-	struct node_to_netsim_data_ind_pkt txDataInd;
+	size_t txDataIndLen = sizeof(struct netsim_data_ind_pkt)- 1 + psduLen;
+	struct netsim_data_ind_pkt *txDataInd =
+			(struct netsim_data_ind_pkt *)malloc(txDataIndLen);
 
-	txDataInd.hdr.len = htons(sizeof(cca_req));
-	txDataInd.hdr.msg_type = htons(MSG_TYPE_TX_DATA_IND);
-	txDataInd.hdr.interface_version = htonl(NETSIM_INTERFACE_VERSION);
-	txDataInd.hdr.node_id = htonll(pimpl->nodeId);
+	txDataInd->hdr.len = htons(txDataIndLen);
+	txDataInd->hdr.msg_type = htons(MSG_TYPE_TX_DATA_IND);
+	txDataInd->hdr.interface_version = htonl(NETSIM_INTERFACE_VERSION);
+	txDataInd->hdr.node_id = htonll(pimpl->nodeId);
 
+	txDataInd->source_addr = htonll(sourceAddr);
+	txDataInd->psdu_len = htons(psduLen);
+	txDataInd->rep_code = repCode;
+	txDataInd->tx_power = -txPower;
+	txDataInd->cca_mode = ccaMode;
+	txDataInd->rssi = 0;
 
+	//TODO: Fill in data
+	for(int i=0; i<psduLen; i++) {
+		txDataInd->pktData[i] = i;
+	}
 
-	txDataInd.hdr.cksum = 0;
-	txDataInd.hdr.cksum = htons(generate_checksum(&txDataInd, sizeof(txDataInd)));
+	txDataInd->hdr.cksum = 0;
+	txDataInd->hdr.cksum = htons(generate_checksum(txDataInd, txDataIndLen));
 
-	send(pimpl->sockfd, &txDataInd, sizeof(txDataInd), MSG_NOSIGNAL);
-#endif
+	send(pimpl->sockfd, txDataInd, txDataIndLen, MSG_NOSIGNAL);
 
+	free(txDataInd);
 }
 
 void NodeSim::readMsg()

@@ -24,11 +24,10 @@ class DeviceNode;
 class NetSimPacket
 {
 public:
-	NetSimPacket(node_to_netsim_data_ind_pkt *dataInd, DeviceNode *fromNode);
+	NetSimPacket(netsim_data_ind_pkt *dataInd, DeviceNode *fromNode);
 
 	uint8_t * buf() { return pktBuffer; }
-	int bufSize() { return sizeof(pktBuffer); }
-
+	size_t bufSize() { return pktBufferLen; }
 
 	int getTimeOnWire()
 	{
@@ -44,8 +43,14 @@ public:
 	{
 		collision = val;
 	}
+
+	void setRSSI(int8_t rssi)
+	{
+		((netsim_data_ind_pkt *)pktBuffer)->rssi = rssi;
+	}
 private:
-	uint8_t pktBuffer[NETSIM_PKT_MAX_SZ];
+	size_t pktBufferLen;
+	uint8_t *pktBuffer;
 	DeviceNode *fromNode;
 	bool collision;
 };
@@ -100,7 +105,7 @@ public:
 	void handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCon);
 	void handleDeregistrationRequest(node_to_netsim_deregistration_req_pkt *deregReq);
 	void handleCcaRequest(node_to_netsim_cca_req_pkt *ccaReq);
-	void handleDataIndication(node_to_netsim_data_ind_pkt *dataInd);
+	void handleDataIndication(netsim_data_ind_pkt *dataInd);
 
 private:
 	DeviceNode_pimpl * pimpl;

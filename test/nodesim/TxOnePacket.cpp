@@ -28,9 +28,10 @@ main()
 	// TODO: Expect CCA confirm -> result == TRUE
 	node->readMsg();
 
-	node->sendTxDataInd();
+	node->sendTxDataInd(0x0102030405060708, 32, 48, -10, 4);
 
-
+	//TODO: Read Tx Done Ind.
+	sleep(2);
 
 	exit(EXIT_SUCCESS);
 }
