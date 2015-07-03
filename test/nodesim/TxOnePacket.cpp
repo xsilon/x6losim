@@ -31,7 +31,9 @@ main()
 	node->sendTxDataInd(0x0102030405060708, 32, 48, -10, 4);
 
 	//TODO: Read Tx Done Ind.
-	sleep(2);
+	sleep(1);
+
+	node->mcastRxDataPacket();
 
 	exit(EXIT_SUCCESS);
 }

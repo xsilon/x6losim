@@ -8,6 +8,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
 
 uint16_t
 generate_checksum(void *msg, int msglen)
@@ -34,11 +36,57 @@ public:
 	{
 		sockfd = -1;
 		nodeId = -1;
+		mcastInit();
 	}
-public:
+	void
+	mcastInit()
+	{
+		int optval, rv;
+		struct ip_mreq mreq;
+
+		rxmcast.sockfd = socket(AF_INET,SOCK_DGRAM,0);
+		optval = 1;
+		rv = setsockopt(rxmcast.sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+		if (rv < 0)
+			throw "Setting SO_REUSEADDR error";
+
+	//	rv = setsockopt(han.netsim.rxmcast.sockfd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof optval);
+	//	if (rv < 0) {
+	//		perror("Setting SO_REUSEPORT error");
+	//		close(han.netsim.rxmcast.sockfd);
+	//		exit(EXIT_FAILURE);
+	//	}
+
+		bzero(&rxmcast.addr,sizeof(rxmcast.addr));
+		rxmcast.addr.sin_family = AF_INET;
+		rxmcast.addr.sin_addr.s_addr=htonl(INADDR_ANY);
+		rxmcast.addr.sin_port=htons(HANADU_MCAST_TX_PORT);
+		rv = bind(rxmcast.sockfd,
+				  (struct sockaddr *)&rxmcast.addr,
+				  sizeof(rxmcast.addr));
+		if (rv < 0)
+			throw "Error binding rx multicast socket";
+
+		mreq.imr_multiaddr.s_addr = inet_addr("224.1.1.1");
+		mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+		rv = setsockopt(rxmcast.sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
+				   sizeof(mreq));
+		if (rv < 0)
+			throw "Setting IP_ADD_MEMBERSHIP error";
+	}
+
+	~NodeSim_pimpl()
+	{
+		close(rxmcast.sockfd);
+	}
+
 	int  sockfd;
 	uint64_t nodeId;
 	char replyBuffer[256];
+	struct {
+		int sockfd;
+		struct sockaddr_in addr;
+	} rxmcast;
 
 };
 
@@ -203,6 +251,46 @@ void NodeSim::readMsg()
 	default:
 		throw "Invalid received msg type";
 	}
+}
 
+
+void
+NodeSim::mcastRxDataPacket()
+{
+	uint8_t *rxbuf;
+	struct sockaddr_in cliaddr;
+	socklen_t len;
+	int n;
+	struct netsim_data_ind_pkt * dataInd;
+
+	rxbuf = (uint8_t *)malloc(256);
+
+	len = sizeof(cliaddr);
+//	n = recvfrom(pimpl->rxmcast.sockfd, rxbuf, 256, MSG_DONTWAIT,
+//				 (struct sockaddr *)&cliaddr, &len);
+	n = recv(pimpl->rxmcast.sockfd, rxbuf, 256, MSG_DONTWAIT);
+
+	if (n == -1) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return;
+	} else if (n == 0) {
+		return;
+	}
+
+	dataInd = (struct netsim_data_ind_pkt *)rxbuf;
+	printf("mcastRxDataPacket length=%d\n", ntohs(dataInd->psdu_len));
+	for(int i=0; i<ntohs(dataInd->psdu_len); i++) {
+		printf("0x%02x\n", dataInd->pktData[i]);
+	}
+	/* First check to see if it's the packet we last sent, ie from us. */
+#if 0
+	if(memcmp(han.mac_addr, hdr->source_addr, sizeof(han.mac_addr)) == 0) {
+		/* Assert Tx Done interrupt if packet has been sent or CSMA fails or if Ack
+		 * requested the max retries has exceeded. */
+	} else {
+		hanadu_rx_buffer_from_netsim(s, hdr);
+	}
+#endif
+	free(rxbuf);
 }
 

@@ -40,6 +40,7 @@ public:
 			   uint8_t repCode, int8_t txPower, uint8_t ccaMode);
 
 	void readMsg();
+	void mcastRxDataPacket();
 private:
 	NodeSim_pimpl *pimpl;
 };
