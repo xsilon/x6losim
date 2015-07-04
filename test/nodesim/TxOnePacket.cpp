@@ -33,6 +33,7 @@ main()
 	//TODO: Read Tx Done Ind.
 	sleep(1);
 
+	node->readMsg();
 	node->mcastRxDataPacket();
 
 	exit(EXIT_SUCCESS);

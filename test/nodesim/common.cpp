@@ -44,7 +44,7 @@ public:
 		int optval, rv;
 		struct ip_mreq mreq;
 
-		rxmcast.sockfd = socket(AF_INET,SOCK_DGRAM,0);
+		rxmcast.sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 		optval = 1;
 		rv = setsockopt(rxmcast.sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
 		if (rv < 0)
@@ -244,7 +244,12 @@ void NodeSim::readMsg()
 	case MSG_TYPE_TX_DATA_IND:
 		break;
 	case MSG_TYPE_TX_DONE_IND:
+	{
+		struct netsim_to_node_tx_done_ind_pkt *txDone =
+			(struct netsim_to_node_tx_done_ind_pkt *)pimpl->replyBuffer;
+		printf("Received Tx Done with result %d\n", txDone->result);
 		break;
+	}
 
 	case MSG_TYPE_CCA_REQ:
 	case MSG_TYPE_REG_CON:
@@ -268,8 +273,9 @@ NodeSim::mcastRxDataPacket()
 	len = sizeof(cliaddr);
 //	n = recvfrom(pimpl->rxmcast.sockfd, rxbuf, 256, MSG_DONTWAIT,
 //				 (struct sockaddr *)&cliaddr, &len);
-	n = recv(pimpl->rxmcast.sockfd, rxbuf, 256, MSG_DONTWAIT);
+	n = recv(pimpl->rxmcast.sockfd, rxbuf, 256, 0 /*MSG_DONTWAIT*/);
 
+	printf("recv finished n=%d errno=%d(%s)", n, errno, strerror(errno));
 	if (n == -1) {
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return;

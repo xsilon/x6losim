@@ -64,9 +64,11 @@ public:
 
 		// Create multicast socket and disable loopback as we don't want
 		// to receive the packets we have just transmitted.
-		tx.mcastsockfd=socket(AF_INET,SOCK_DGRAM,0);
+		tx.mcastsockfd=socket(AF_INET, SOCK_DGRAM, 0);
 		tx.mcastport = mcastPort;
-		loop = 0;
+		// Ensure IP_MULTICAST_LOOP is set so QEMU nodes that are
+		// running locally can receive the multicast packet.
+		loop = 1;
 		setsockopt(tx.mcastsockfd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
 
 		bzero(&tx.mcastGroupAddr,sizeof(tx.mcastGroupAddr));
@@ -373,17 +375,22 @@ PhysicalMedium::setPktForTransmission(NetSimPacket *packet)
 void
 PhysicalMedium::txPacket()
 {
-	assert (pimpl->tx.nextTxPkt);
+	DeviceNode *node = pimpl->tx.nextTxPkt->getFromNode();
+	assert(pimpl->tx.nextTxPkt);
+	assert(node);
 
 	//TODO: Fill in RSSI, for now set it to 127
 	xlog(LOG_DEBUG, "%s: Node (0x%016llx) transmitting packet",
-			pimpl->name, pimpl->tx.nextTxPkt->getFromNode());
+			pimpl->name, node);
 	pimpl->tx.nextTxPkt->setRSSI(127);
 
 	sendto(pimpl->tx.mcastsockfd, pimpl->tx.nextTxPkt->buf(),
 		pimpl->tx.nextTxPkt->bufSize(), 0,
 		(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
 		sizeof(pimpl->tx.mcastGroupAddr));
+
+	node->sendTxDoneIndication(pimpl->tx.nextTxPkt->getTxDoneResult());
+
 
 	delete pimpl->tx.nextTxPkt;
 	pimpl->tx.nextTxPkt = NULL;

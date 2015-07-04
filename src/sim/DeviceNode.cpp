@@ -173,18 +173,20 @@ public:
 	{
 		NetSimPacket *pkt = node->getTxPacket();
 		assert(pkt);
-		int result = TX_DONE_OK;
+		pkt->setTxDoneResult(TX_DONE_OK);
 
 		node->stopTxTimer();
 		// TODO: Need to check if simulator has decided packet is to fail.
 		if (!pkt->hasCollided()) {
 			node->getMedium()->setPktForTransmission(pkt);
 		} else {
-			result = TX_DONE_COLLIDED;
+			pkt->setTxDoneResult(TX_DONE_COLLIDED);
 		}
-		node->sendTxDoneIndication(result);
 
-		// The physical medium will remove the node from the Tx List.
+		// The physical medium will remove the node from the Tx List,
+		// Transmit the packet using the multicast socket and then
+		// Send back the Tx Done Indication to the node to inform
+		// it that the packet has been sent (or has collided).
 
 		// Clear transmitted packet
 		node->setTxPacket(NULL);

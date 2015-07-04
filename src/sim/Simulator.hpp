@@ -44,6 +44,14 @@ public:
 	{
 		collision = val;
 	}
+	int getTxDoneResult()
+	{
+		return txDoneResult;
+	}
+	void setTxDoneResult(int result)
+	{
+		txDoneResult = result;
+	}
 
 	void setRSSI(int8_t rssi)
 	{
@@ -59,6 +67,7 @@ private:
 	uint8_t *pktBuffer;
 	DeviceNode *fromNode;
 	bool collision;
+	int txDoneResult;
 };
 
 typedef std::list<NetSimPacket *> NetSimPktList;
