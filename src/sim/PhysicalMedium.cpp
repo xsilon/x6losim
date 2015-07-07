@@ -292,13 +292,13 @@ PhysicalMedium::processPollerEvents(int numEvents)
 				pimpl->state = STOPPING;
 				break;
 			} else {
+				xlog(LOG_NOTICE, "%s: Read detected", pimpl->name);
 				if (DeviceNode *node = static_cast<DeviceNode *>(evp->data.ptr)) {
 					node->readMsg();
 				} else {
 					throw "Poller EPOLLIN: Not a Device node";
 				}
 			}
-			xlog(LOG_NOTICE, "%s: Read detected", pimpl->name);
 		}
 		if (evp->events & (EPOLLERR | EPOLLHUP)) {
 			/* epoll error */

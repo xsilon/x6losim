@@ -16,7 +16,7 @@
 // _______________________________________________________ Default Configuration
 
 #define EPOLL_MAX_EVENTS		(64)
-#define REGISTRATION_TIME		(5)
+#define REGISTRATION_TIME		(120)
 
 // ________________________________________________________________ NetSimPacket
 

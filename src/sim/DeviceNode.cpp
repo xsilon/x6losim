@@ -685,7 +685,8 @@ DeviceNode::handleRegistrationConfirm(node_to_netsim_registration_con_pkt *regCo
 	BUILD_BUG_ON(sizeof(pimpl->osVersion) != sizeof(regCon->os_version));
 
 	strncpy(pimpl->os, regCon->os, sizeof(pimpl->os));
-	strncpy(pimpl->osVersion, regCon->os, sizeof(pimpl->osVersion));
+	strncpy(pimpl->osVersion, regCon->os_version, sizeof(pimpl->osVersion));
+	xlog(LOG_DEBUG, "Reg Confirm: OS:%s V:%s", pimpl->os, pimpl->osVersion);
 
 	newState = pimpl->curState->handleRegistrationConfirm();
 	if (newState) {
