@@ -61,6 +61,7 @@ NetSimPacket::NetSimPacket(netsim_data_ind_pkt *dataInd, DeviceNode *fromNode) :
 	pktBuffer = (uint8_t *)malloc(pktBufferLen);
 	memcpy(pktBuffer, dataInd, pktBufferLen);
 	collision = false;
+	txDoneResult = false;
 }
 
 NetSimPacket::~NetSimPacket()

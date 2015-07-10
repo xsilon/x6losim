@@ -375,25 +375,27 @@ PhysicalMedium::setPktForTransmission(NetSimPacket *packet)
 void
 PhysicalMedium::txPacket()
 {
-	DeviceNode *node = pimpl->tx.nextTxPkt->getFromNode();
-	assert(pimpl->tx.nextTxPkt);
-	assert(node);
+	DeviceNode *node;
 
-	//TODO: Fill in RSSI, for now set it to 127
-	xlog(LOG_DEBUG, "%s: Node (0x%016llx) transmitting packet",
-			pimpl->name, node);
-	pimpl->tx.nextTxPkt->setRSSI(127);
+	// Check to see if there is a packet to transmit
+	if (pimpl->tx.nextTxPkt) {
+		node = pimpl->tx.nextTxPkt->getFromNode();
+		assert(node);
+		//TODO: Fill in RSSI, for now set it to 127
+		pimpl->tx.nextTxPkt->setRSSI(127);
 
-	sendto(pimpl->tx.mcastsockfd, pimpl->tx.nextTxPkt->buf(),
-		pimpl->tx.nextTxPkt->bufSize(), 0,
-		(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
-		sizeof(pimpl->tx.mcastGroupAddr));
+		sendto(pimpl->tx.mcastsockfd, pimpl->tx.nextTxPkt->buf(),
+			pimpl->tx.nextTxPkt->bufSize(), 0,
+			(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
+			sizeof(pimpl->tx.mcastGroupAddr));
 
-	node->sendTxDoneIndication(pimpl->tx.nextTxPkt->getTxDoneResult());
+		node->sendTxDoneIndication(pimpl->tx.nextTxPkt->getTxDoneResult());
+		xlog(LOG_DEBUG, "%s: Node (0x%016llx) Tx packet and Sent Tx Done Ind",
+				pimpl->name, node);
 
-
-	delete pimpl->tx.nextTxPkt;
-	pimpl->tx.nextTxPkt = NULL;
+		delete pimpl->tx.nextTxPkt;
+		pimpl->tx.nextTxPkt = NULL;
+	}
 }
 
 /*
@@ -591,7 +593,17 @@ PowerlineMedium::removeNode(HanaduDeviceNode* node)
 void
 PowerlineMedium::txCollisionCheck()
 {
+	std::list<DeviceNode *>::iterator iter;
 
+	if (pimpl->txList.size() > 1) {
+		iter = pimpl->txList.begin();
+		while (iter != pimpl->txList.end()) {
+			DeviceNode *node = *iter;
+
+			node->getTxPacket()->setCollided(true);
+			iter++;
+		}
+	}
 }
 
 

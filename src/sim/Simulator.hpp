@@ -162,6 +162,7 @@ private:
 class PhysicalMedium_pimpl;
 class PhysicalMedium
 {
+friend class PowerlineMedium;
 public:
 	PhysicalMedium(const char * name, int port, int mcastPort, clockid_t clockidToUse);
 	virtual ~PhysicalMedium();

@@ -142,7 +142,7 @@ struct netsim_data_ind_pkt
 	uint64_t source_addr;
 	uint16_t psdu_len; /* length of the actual 802.15.4 frame after this hdr */
 	uint8_t rep_code; /* the repitition code it was sent at */
-	int8_t tx_power; /* the power it was sent at */
+	uint8_t tx_power; /* the power it was sent at (in hex format) */
 	uint8_t cca_mode; /* the cca mode used */
 	int8_t rssi; /* Received signal strength, set by simulator */
 
@@ -168,7 +168,7 @@ struct netsim_to_node_tx_done_ind_pkt
 
 	/* 0 = tx succeeded.
 	 * 1 = collision
-	 * 2 = failed (isimulator has decided pkt is to fail ie too many errors). */
+	 * 2 = failed (simulator has decided pkt is to fail ie too many errors). */
 	uint8_t result;
 
 } __attribute__((__packed__ ));
