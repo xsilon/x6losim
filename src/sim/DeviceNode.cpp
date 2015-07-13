@@ -594,7 +594,9 @@ DeviceNode::readMsg()
 			handleCcaRequest((node_to_netsim_cca_req_pkt *)msgData);
 			break;
 		case MSG_TYPE_TX_DATA_IND:
-			xlog(LOG_INFO, "MSG_TYPE_CCA_REQ");
+			xlog(LOG_INFO, "MSG_TYPE_TX_DATA_IND");
+			/* Checksum is regenerated later on before we actually
+			   transmit it. */
 			handleDataIndication((netsim_data_ind_pkt *)msgData);
 			break;
 		// These aren't supported
