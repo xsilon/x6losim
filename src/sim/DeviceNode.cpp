@@ -322,7 +322,9 @@ public:
 
 class DeviceNode_pimpl {
 public:
-	DeviceNode_pimpl(int sockfd) : sockfd(sockfd)
+	DeviceNode_pimpl(int sockfd) : sockfd(sockfd),
+				       regTimer(0, 0, REGISTRATION_TIME, 0),
+				       txTimer(0, 0, 0, 0)
 	{
 		socket = new Socket(sockfd);
 		/*
@@ -350,8 +352,8 @@ public:
 	char osVersion[32];
 	IDeviceNodeState *curState;
 
-	static DeviceNodeTimer regTimer;
-	static DeviceNodeTimer txTimer;
+	DeviceNodeTimer regTimer;
+	DeviceNodeTimer txTimer;
 
 	NetSimPacket *txPkt;
 
@@ -359,9 +361,6 @@ public:
 		int failedReads;
 	} stats;
 };
-
-DeviceNodeTimer DeviceNode_pimpl::regTimer(0, 0, REGISTRATION_TIME, 0);
-DeviceNodeTimer DeviceNode_pimpl::txTimer(0, 0, 0, 0);
 
 DeviceNode::DeviceNode(int sockfd)
 {
