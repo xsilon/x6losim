@@ -58,6 +58,8 @@ public:
 		((netsim_data_ind_pkt *)pktBuffer)->rssi = rssi;
 	}
 
+	void generateChecksum();
+
 	DeviceNode *getFromNode()
 	{
 		return fromNode;

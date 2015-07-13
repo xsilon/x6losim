@@ -383,7 +383,7 @@ PhysicalMedium::txPacket()
 		assert(node);
 		//TODO: Fill in RSSI, for now set it to 127
 		pimpl->tx.nextTxPkt->setRSSI(127);
-
+		pimpl->tx.nextTxPkt->generateChecksum();
 		sendto(pimpl->tx.mcastsockfd, pimpl->tx.nextTxPkt->buf(),
 			pimpl->tx.nextTxPkt->bufSize(), 0,
 			(struct sockaddr *)&pimpl->tx.mcastGroupAddr,

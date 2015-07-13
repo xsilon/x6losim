@@ -69,6 +69,15 @@ NetSimPacket::~NetSimPacket()
 	free(pktBuffer);
 }
 
+void
+NetSimPacket::generateChecksum()
+{
+	uint16_t cksum;
+
+	cksum = generate_checksum(pktBuffer, pktBufferLen);
+	((netsim_data_ind_pkt *)pktBuffer)->hdr.cksum = htons(cksum);
+}
+
 
 class IDeviceNodeState
 {
