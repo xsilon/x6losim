@@ -236,7 +236,13 @@ IDeviceNodeState *RegisteringState::handleRegistrationConfirm()
 IDeviceNodeState *ActiveState::handleTxRequest(NetSimPacket &dataPkt)
 {
 	//Should be in Tx State
-	node->startTxTimer(dataPkt.getTimeOnWire());
+	if (!dataPkt.isAck()) {
+		// Not an ack so set the Tx Timer to the duration of the packet.
+		node->startTxTimer(dataPkt.getTimeOnWire());
+	} else {
+		// Acks sent straight away
+		node->startTxTimer(0);
+	}
 	node->setTxPacket(&dataPkt);
 	node->getMedium()->addNodeToTxList(node);
 	return new TxState(node);
@@ -276,8 +282,14 @@ public:
 	{
 		assert(!started);
 
-		timerSpec.it_value.tv_sec = ms /1000;
-		timerSpec.it_value.tv_nsec = (ms % 1000) * 1000000;
+		if (ms == 0) {
+			// Create a timer that expires straight away.
+			timerSpec.it_value.tv_sec = 0;
+			timerSpec.it_value.tv_nsec = 1;
+		} else {
+			timerSpec.it_value.tv_sec = ms /1000;
+			timerSpec.it_value.tv_nsec = (ms % 1000) * 1000000;
+		}
 
 		if (timer_create(NetworkSimulator::getClockId(),
 				 &sigEvent, &timer) == -1)

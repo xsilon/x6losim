@@ -36,6 +36,12 @@ public:
 		return 4;
 	}
 
+	bool isAck()
+	{
+		/* TODO: Remove magic numbers */
+		uint8_t frameType = pktBuffer[0] & 0x07;
+		return frameType == 0x02;
+	}
 	bool hasCollided()
 	{
 		return collision;

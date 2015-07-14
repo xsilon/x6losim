@@ -141,6 +141,7 @@ struct netsim_data_ind_pkt
 
 	uint64_t source_addr;
 	uint16_t psdu_len; /* length of the actual 802.15.4 frame after this hdr */
+	uint16_t extra_hdr; /* The Hanadu MAC frame extra header bits */
 	uint8_t rep_code; /* the repitition code it was sent at */
 	uint8_t tx_power; /* the power it was sent at (in hex format) */
 	uint8_t cca_mode; /* the cca mode used */

@@ -263,14 +263,14 @@ void
 NodeSim::mcastRxDataPacket()
 {
 	uint8_t *rxbuf;
-	struct sockaddr_in cliaddr;
-	socklen_t len;
+//	struct sockaddr_in cliaddr;
+//	socklen_t len;
 	int n;
 	struct netsim_data_ind_pkt * dataInd;
 
 	rxbuf = (uint8_t *)malloc(256);
 
-	len = sizeof(cliaddr);
+//	len = sizeof(cliaddr);
 //	n = recvfrom(pimpl->rxmcast.sockfd, rxbuf, 256, MSG_DONTWAIT,
 //				 (struct sockaddr *)&cliaddr, &len);
 	n = recv(pimpl->rxmcast.sockfd, rxbuf, 256, 0 /*MSG_DONTWAIT*/);
