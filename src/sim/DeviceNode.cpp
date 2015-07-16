@@ -187,9 +187,7 @@ public:
 
 		node->stopTxTimer();
 		// TODO: Need to check if simulator has decided packet is to fail.
-		if (!pkt->hasCollided()) {
-			node->getMedium()->setPktForTransmission(pkt);
-		} else {
+		if (pkt->hasCollided()) {
 			pkt->setTxDoneResult(TX_DONE_COLLIDED);
 		}
 
@@ -198,8 +196,6 @@ public:
 		// Send back the Tx Done Indication to the node to inform
 		// it that the packet has been sent (or has collided).
 
-		// Clear transmitted packet
-		node->setTxPacket(NULL);
 		return new ActiveState(node);
 	}
 	IDeviceNodeState *handleRegistrationConfirm()
@@ -666,10 +662,13 @@ DeviceNode::getTxPacket()
 	return pimpl->txPkt;
 }
 
-/* Use setTxPacket(NULL) to clear transmitted packet */
+/* Use setTxPacket(NULL) to delete and clear transmitted packet */
 void
 DeviceNode::setTxPacket(NetSimPacket *pkt)
 {
+	if (pkt == NULL) {
+		delete pimpl->txPkt;
+	}
 	pimpl->txPkt = pkt;
 }
 

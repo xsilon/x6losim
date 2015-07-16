@@ -76,8 +76,7 @@ public:
 		tx.mcastGroupAddr.sin_addr.s_addr=inet_addr("224.1.1.1");
 		tx.mcastGroupAddr.sin_port=htons(tx.mcastport);
 
-		tx.nextTxPkt = NULL;
-
+		memset(&stats, 0, sizeof(stats));
 	}
 	~PhysicalMedium_pimpl()
 	{
@@ -142,9 +141,12 @@ public:
 		int mcastsockfd;
 		int mcastport;
 		struct sockaddr_in mcastGroupAddr;
-
-		NetSimPacket *nextTxPkt;
 	} tx;
+	struct {
+		int tx_pkts_ok;
+		int tx_pkts_collided;
+		int tx_pkts_failed;
+	} stats;
 };
 
 
@@ -209,6 +211,9 @@ PhysicalMedium::addNodeToCcaList(DeviceNode* node)
 void
 PhysicalMedium::addNodeToTxList(DeviceNode* node)
 {
+	assert(node);
+	xlog(LOG_DEBUG, "%s: Add Node ID (0x%016llx) to Tx list",
+			pimpl->name, node->getNodeId());
 	pimpl->txList.push_back(node);
 }
 
@@ -337,7 +342,23 @@ PhysicalMedium::checkNodeRegistrationTimeout()
 }
 
 void
-PhysicalMedium::checkNodeTxTimeout()
+PhysicalMedium::txPacket(DeviceNode *node, NetSimPacket * pkt)
+{
+	// Check to see if there is a packet to transmit
+	assert(node);
+	//TODO: Fill in RSSI, for now set it to 127
+	pkt->setRSSI(127);
+	pkt->generateChecksum();
+	sendto(pimpl->tx.mcastsockfd, pkt->buf(), pkt->bufSize(), 0,
+		(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
+		sizeof(pimpl->tx.mcastGroupAddr));
+
+	xlog(LOG_DEBUG, "%s: Node (0x%016llx) Tx packet",
+			pimpl->name, node);
+}
+
+void
+PhysicalMedium::processTxList()
 {
 	std::list<DeviceNode *>::iterator iter;
 
@@ -348,53 +369,43 @@ PhysicalMedium::checkNodeTxTimeout()
 		DeviceNode *node = *iter;
 
 		if (node->hasTxTimerExpired()) {
+			NetSimPacket * pkt = node->getTxPacket();
+			int txDoneResult;
+
+			assert(pkt);
+			// This will set Tx Done Result
+			node->handleTxTimerExpired();
+			txDoneResult = pkt->getTxDoneResult();
+			node->sendTxDoneIndication(txDoneResult);
+			xlog(LOG_DEBUG, "%s: Node (0x%016llx) Tx Done Ind(%d)",
+					pimpl->name, node, txDoneResult);
+
+			if (txDoneResult == TX_DONE_OK) {
+				xlog(LOG_DEBUG, "%s: Node (0x%016llx) Tx packet",
+						pimpl->name, node);
+				txPacket(node, pkt);
+				pimpl->stats.tx_pkts_ok++;
+			} else if (txDoneResult == TX_DONE_COLLIDED) {
+				pimpl->stats.tx_pkts_collided++;
+			} else if (txDoneResult == TX_DONE_FAILURE) {
+				pimpl->stats.tx_pkts_failed++;
+			} else {
+				throw "Invalid TX Done Result";
+			}
+			xlog(LOG_DEBUG, "%s: ok(%d) collided(%d) failed(%d)",
+					pimpl->name, pimpl->stats.tx_pkts_ok,
+					pimpl->stats.tx_pkts_collided,
+					pimpl->stats.tx_pkts_failed);
+			// Delete and Clear transmitted packet
+			node->setTxPacket(NULL);
+
 			xlog(LOG_DEBUG, "%s: Removing Node ID (0x%016llx) from TX list",
 					pimpl->name, node->getNodeId());
 			iter = pimpl->txList.erase(iter);
-
-			//This will probably delete the node so we MUST NOT
-			//USE it afterwards
-			node->handleTxTimerExpired();
-
 		} else {
 			// Node not registered or timed out
 			iter++;
 		}
-	}
-}
-
-void
-PhysicalMedium::setPktForTransmission(NetSimPacket *packet)
-{
-	// This assert validates that we don't get 2 nodes thinking they can
-	// transmit at the same time.
-	assert(pimpl->tx.nextTxPkt == NULL);
-	pimpl->tx.nextTxPkt = packet;
-}
-
-void
-PhysicalMedium::txPacket()
-{
-	DeviceNode *node;
-
-	// Check to see if there is a packet to transmit
-	if (pimpl->tx.nextTxPkt) {
-		node = pimpl->tx.nextTxPkt->getFromNode();
-		assert(node);
-		//TODO: Fill in RSSI, for now set it to 127
-		pimpl->tx.nextTxPkt->setRSSI(127);
-		pimpl->tx.nextTxPkt->generateChecksum();
-		sendto(pimpl->tx.mcastsockfd, pimpl->tx.nextTxPkt->buf(),
-			pimpl->tx.nextTxPkt->bufSize(), 0,
-			(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
-			sizeof(pimpl->tx.mcastGroupAddr));
-
-		node->sendTxDoneIndication(pimpl->tx.nextTxPkt->getTxDoneResult());
-		xlog(LOG_DEBUG, "%s: Node (0x%016llx) Tx packet and Sent Tx Done Ind",
-				pimpl->name, node);
-
-		delete pimpl->tx.nextTxPkt;
-		pimpl->tx.nextTxPkt = NULL;
 	}
 }
 
@@ -434,9 +445,7 @@ PhysicalMedium::interval(int waitms)
 			//rv is 0 or number of file descriptors to process.
 			if (rv) {
 				processPollerEvents(rv);
-				/* may set state to STOPPING */
-				if (pimpl->state == STOPPING)
-					break;
+				break;
 			}
 		}
 
@@ -483,13 +492,19 @@ PhysicalMedium::run() {
 				pimpl->state = TX_802514_FRAME;
 		}
 
+		// In this loop we wait until the Tx list is empty. During this
+		// time if we get more than 1 node in the Tx List we have a
+		// collision.
 		while (!pimpl->txList.empty()) {
 
+			// TODO: Maybe use timerfd to get finer resolution with
+			// Tx Packet Timings.
 			interval(1);
 			if(pimpl->state == STOPPING)
 				break;
 
-			// Process CCA List
+			// Process CCA List, as we are in state TX_802514_FRAME
+			// This routine will tell nodes they have failed CCA.
 			processCcaList();
 
 			// Check with subclasses collision check, this needs to
@@ -498,11 +513,10 @@ PhysicalMedium::run() {
 			// next packet to tx member variable.
 			txCollisionCheck();
 
-			// Go through Tx list and process timers
-			checkNodeTxTimeout();
-
-			// Check to see if there is a packet for transmission.
-			txPacket();
+			// Go through Tx list and process timers and if one has
+			// expired send the Tx Done Indication with the result
+			// of the transmission.
+			processTxList();
 
 		}
 		if(pimpl->state != STOPPING) {

@@ -188,9 +188,6 @@ public:
 	void addNodeToTxList(DeviceNode *node);
 	void removeNodeFromTxList(DeviceNode *nodeIn);
 
-	void setPktForTransmission(NetSimPacket *packet);
-	void txPacket();
-
 protected:
 	void addNode(DeviceNode *node);
 	void processCcaList();
@@ -201,7 +198,8 @@ private:
 
 	void processPollerEvents(int numEvents);
 	void checkNodeRegistrationTimeout();
-	void checkNodeTxTimeout();
+	void processTxList();
+	void txPacket(DeviceNode *node, NetSimPacket * pkt);
 
 	void interval(int waitms);
 	void * run();
