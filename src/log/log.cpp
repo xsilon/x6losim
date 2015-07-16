@@ -109,7 +109,7 @@ _xlog_log_hexdump(
 				char_buff_p[HEXDUMP_BYTES_PER_LINE] = '\0';
 
 				_xlog(file, function, line_no, pri,
-					  "0x%p: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
+					  "%p: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
 
 				row_start_addr = ((char *)row_start_addr + HEXDUMP_BYTES_PER_LINE);
 				hex_wr_p = hex_buff_p;
@@ -128,7 +128,7 @@ _xlog_log_hexdump(
 			char_buff_p[HEXDUMP_BYTES_PER_LINE] = '\0';
 
 			_xlog(file, function, line_no, pri,
-				  "0x%p: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
+				  "%p: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
 		}
 	}
 	pthread_mutex_unlock(&log_mutex);

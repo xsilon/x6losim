@@ -30,6 +30,10 @@ public:
 	uint8_t * buf() { return pktBuffer; }
 	size_t bufSize() { return pktBufferLen; }
 
+	uint8_t * pktbuf() { return pktBuffer + sizeof(netsim_data_ind_pkt) - 1; }
+	//TODO: When we add stuff after packet data ensure we adjust this.
+	size_t pktbufSize() { return pktBufferLen - sizeof(netsim_data_ind_pkt) - 1; }
+
 	int getTimeOnWire()
 	{
 		//TODO: Use Tx parameters to work out the time on the wire
