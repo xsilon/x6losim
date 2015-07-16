@@ -353,8 +353,9 @@ PhysicalMedium::txPacket(DeviceNode *node, NetSimPacket * pkt)
 		(struct sockaddr *)&pimpl->tx.mcastGroupAddr,
 		sizeof(pimpl->tx.mcastGroupAddr));
 
-	xlog(LOG_DEBUG, "%s: Node (0x%016llx) Tx packet",
-			pimpl->name, node);
+	xlog(LOG_DEBUG, "%s: Node (0x%016llx) Tx packet Len %d",
+			pimpl->name, node, pkt->bufSize());
+	xlog_hexdump(LOG_DEBUG, pkt->buf(), pkt->bufSize());
 }
 
 void

@@ -72,9 +72,9 @@ _xlog_log_hexdump(
 	char * char_buff_p;
 	char *hex_wr_p;
 	const char *dump_p = (const char*) start_addr;
-	unsigned long row_start_addr = (unsigned long)print_address
-	& ~((unsigned long) (HEXDUMP_BYTES_PER_LINE - 1));
-	unsigned int first_row_start_column = (unsigned long)print_address % HEXDUMP_BYTES_PER_LINE;
+	void * row_start_addr =
+			(void *)((long long unsigned)print_address & ~((HEXDUMP_BYTES_PER_LINE - 1)));
+	unsigned int first_row_start_column = (long long unsigned)print_address % HEXDUMP_BYTES_PER_LINE;
 	unsigned int column = 0;
 	unsigned int bytes_left = dump_byte_len;
 	unsigned int i;
@@ -109,9 +109,9 @@ _xlog_log_hexdump(
 				char_buff_p[HEXDUMP_BYTES_PER_LINE] = '\0';
 
 				_xlog(file, function, line_no, pri,
-					  "0x%08X: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
+					  "0x%p: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
 
-				row_start_addr += HEXDUMP_BYTES_PER_LINE;
+				row_start_addr = ((char *)row_start_addr + HEXDUMP_BYTES_PER_LINE);
 				hex_wr_p = hex_buff_p;
 				column = 0;
 			}
@@ -128,7 +128,7 @@ _xlog_log_hexdump(
 			char_buff_p[HEXDUMP_BYTES_PER_LINE] = '\0';
 
 			_xlog(file, function, line_no, pri,
-				  "0x%08X: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
+				  "0x%p: %s  [%s]\n", row_start_addr, hex_buff_p, char_buff_p);
 		}
 	}
 	pthread_mutex_unlock(&log_mutex);
