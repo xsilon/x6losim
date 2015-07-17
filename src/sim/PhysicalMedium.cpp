@@ -14,6 +14,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <pcap.h>
+
 #include <unordered_map>
 #include <list>
 #include <mutex>
@@ -77,6 +79,12 @@ public:
 		tx.mcastGroupAddr.sin_port=htons(tx.mcastport);
 
 		memset(&stats, 0, sizeof(stats));
+
+		pcap.fake = pcap_open_dead(DLT_IEEE802_15_4_NOFCS, 65535);
+		assert(pcap.fake);
+		pcap.dumper = pcap_dump_open(pcap.fake, "./packets.pcap");
+		assert(pcap.dumper);
+
 	}
 	~PhysicalMedium_pimpl()
 	{
@@ -116,6 +124,10 @@ public:
 
 		if (tx.mcastsockfd != -1)
 			close(tx.mcastsockfd);
+
+		pcap_dump_flush(pcap.dumper);
+		pcap_dump_close(pcap.dumper);
+		pcap_close(pcap.fake);
 	}
 
 	enum PhysicalMediumState state;
@@ -147,6 +159,11 @@ public:
 		int tx_pkts_collided;
 		int tx_pkts_failed;
 	} stats;
+
+	struct {
+		pcap_t *fake;
+		pcap_dumper_t *dumper;
+	} pcap;
 };
 
 
@@ -344,6 +361,7 @@ PhysicalMedium::checkNodeRegistrationTimeout()
 void
 PhysicalMedium::txPacket(DeviceNode *node, NetSimPacket * pkt)
 {
+	struct pcap_pkthdr pcaphdr;
 	// Check to see if there is a packet to transmit
 	assert(node);
 	//TODO: Fill in RSSI, for now set it to 127
@@ -356,6 +374,11 @@ PhysicalMedium::txPacket(DeviceNode *node, NetSimPacket * pkt)
 	xlog(LOG_DEBUG, "%s: Node (0x%016llx) Tx packet Len %d",
 			pimpl->name, node, pkt->pktbufSize());
 	xlog_hexdump(LOG_DEBUG, pkt->pktbuf(), pkt->pktbufSize());
+
+	gettimeofday(&pcaphdr.ts,NULL);
+	pcaphdr.len = pkt->pktbufSize();
+	pcaphdr.caplen = pkt->pktbufSize();;
+	pcap_dump((u_char *)pimpl->pcap.dumper, &pcaphdr, pkt->pktbuf());
 }
 
 void

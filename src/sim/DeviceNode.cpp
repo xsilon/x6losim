@@ -56,9 +56,8 @@ static inline uint64_t ntohll(uint64_t x)
 NetSimPacket::NetSimPacket(netsim_data_ind_pkt *dataInd, DeviceNode *fromNode) :
 	fromNode(fromNode)
 {
-	pktBufferLen = ntohs(dataInd->psdu_len) + sizeof(*dataInd) - 1;
-
-	pktBuffer = (uint8_t *)malloc(pktBufferLen);
+	pktBufferLen = ntohs(dataInd->hdr.len);
+	pktBuffer = (netsim_data_ind_pkt *)malloc(pktBufferLen);
 	memcpy(pktBuffer, dataInd, pktBufferLen);
 	collision = false;
 	txDoneResult = false;
@@ -67,6 +66,19 @@ NetSimPacket::NetSimPacket(netsim_data_ind_pkt *dataInd, DeviceNode *fromNode) :
 NetSimPacket::~NetSimPacket()
 {
 	free(pktBuffer);
+}
+
+uint8_t *
+NetSimPacket::pktbuf()
+{
+	return (uint8_t *)pktBuffer->pktData;
+}
+//TODO: When we add stuff after packet data ensure we adjust this.
+size_t
+NetSimPacket::pktbufSize()
+{
+
+	return (uint16_t)ntohs(pktBuffer->psdu_len);
 }
 
 void

@@ -27,12 +27,11 @@ public:
 	NetSimPacket(netsim_data_ind_pkt *dataInd, DeviceNode *fromNode);
 	virtual ~NetSimPacket();
 
-	uint8_t * buf() { return pktBuffer; }
+	uint8_t * buf() { return (uint8_t *)pktBuffer; }
 	size_t bufSize() { return pktBufferLen; }
 
-	uint8_t * pktbuf() { return pktBuffer + sizeof(netsim_data_ind_pkt) - 1; }
-	//TODO: When we add stuff after packet data ensure we adjust this.
-	size_t pktbufSize() { return pktBufferLen - sizeof(netsim_data_ind_pkt) - 1; }
+	uint8_t * pktbuf();
+	size_t pktbufSize();
 
 	int getTimeOnWire()
 	{
@@ -43,7 +42,7 @@ public:
 	bool isAck()
 	{
 		/* TODO: Remove magic numbers */
-		uint8_t frameType = pktBuffer[0] & 0x07;
+		uint8_t frameType = ((uint8_t *)pktBuffer)[0] & 0x07;
 		return frameType == 0x02;
 	}
 	bool hasCollided()
@@ -65,7 +64,7 @@ public:
 
 	void setRSSI(int8_t rssi)
 	{
-		((netsim_data_ind_pkt *)pktBuffer)->rssi = rssi;
+		pktBuffer->rssi = rssi;
 	}
 
 	void generateChecksum();
@@ -76,7 +75,7 @@ public:
 	}
 private:
 	size_t pktBufferLen;
-	uint8_t *pktBuffer;
+	netsim_data_ind_pkt *pktBuffer;
 	DeviceNode *fromNode;
 	bool collision;
 	int txDoneResult;
