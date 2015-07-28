@@ -509,11 +509,11 @@ PhysicalMedium::run() {
 			if(pimpl->state == STOPPING)
 				break;
 
-			// Process CCA List
-			processCcaList();
-
 			if (!pimpl->txList.empty())
 				pimpl->state = TX_802514_FRAME;
+
+			// Process CCA List
+			processCcaList();
 		}
 
 		// In this loop we wait until the Tx list is empty. During this
