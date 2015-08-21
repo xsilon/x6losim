@@ -84,6 +84,7 @@ NetworkSimulator::getClockId()
 {
 	return NetworkSimulator_pimpl::clockidToUse;
 }
+
 SocketUnblocker& NetworkSimulator::getUnblocker()
 {
 	// Guaranteed to be destroyed. Instantiated on first use.
