@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <sys/prctl.h>
 
 #include "iostream"
 using namespace std;
@@ -45,6 +46,11 @@ int main( int argc, char* argv[] )
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	/* This can be started from a GUI Application so set the death signal
+	 * so that if the GUI quits it doesn't palm this server off onto the
+	 * init process. */
+	prctl(PR_SET_PDEATHSIG, SIGTERM);
 
 	xlog(LOG_NOTICE, "x6losim started v%s", X6LOSIM_VERSION);
 	/* Install the signal handler */
